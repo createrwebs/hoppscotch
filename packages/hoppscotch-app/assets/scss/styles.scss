@@ -54,6 +54,7 @@ textarea {
 
 html {
   scroll-behavior: smooth;
+  scrollbar-gutter: stable;
 }
 
 body {
@@ -460,6 +461,17 @@ pre.ace_editor {
   }
 }
 
+.cm-editor {
+  .cm-line::selection {
+    background-color: var(--accent-dark-color) !important;
+    color: var(--accent-contrast-color) !important;
+  }
+  .cm-line ::selection {
+    background-color: var(--accent-dark-color) !important;
+    color: var(--accent-contrast-color) !important;
+  }
+}
+
 .shortcut-key {
   @apply inline-flex;
   @apply font-sans;
@@ -482,5 +494,11 @@ details summary::-webkit-details-marker {
 @media (max-width: 767px) {
   main {
     margin-bottom: env(safe-area-inset-bottom);
+  }
+}
+
+.env-highlight {
+  * {
+    @apply text-accentContrast;
   }
 }

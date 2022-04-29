@@ -29,10 +29,12 @@ import {
   placeholder as placeholderExt,
   ViewPlugin,
   ViewUpdate,
+  keymap,
 } from "@codemirror/view"
 import { EditorState, Extension } from "@codemirror/state"
 import clone from "lodash/clone"
 import { tooltips } from "@codemirror/tooltip"
+import { history, historyKeymap } from "@codemirror/history"
 import { inputTheme } from "~/helpers/editor/themes/baseTheme"
 import { HoppReactiveEnvPlugin } from "~/helpers/editor/extensions/HoppEnvironment"
 import { useReadonlyStream } from "~/helpers/utils/composables"
@@ -44,12 +46,14 @@ const props = withDefaults(
     placeholder: string
     styles: string
     envs: { key: string; value: string; source: string }[] | null
+    focus: boolean
   }>(),
   {
     value: "",
     placeholder: "",
     styles: "",
     envs: null,
+    focus: false,
   }
 )
 
@@ -118,6 +122,7 @@ const envTooltipPlugin = new HoppReactiveEnvPlugin(envVars, view)
 
 const initView = (el: any) => {
   const extensions: Extension = [
+    EditorView.contentAttributes.of({ "aria-label": props.placeholder }),
     inputTheme,
     tooltips({
       position: "absolute",
@@ -170,6 +175,8 @@ const initView = (el: any) => {
         }
       }
     ),
+    history(),
+    keymap.of([...historyKeymap]),
   ]
 
   view.value = new EditorView({

@@ -265,7 +265,7 @@ _Add-ons are developed and maintained under **[Hoppscotch Organization](https://
 ## **Usage**
 
 1. Provide your API endpoint in the URL field
-2. CLick "Send" to simulate the request
+2. Click "Send" to simulate the request
 3. View the response
 
 ## **Built with**
@@ -315,8 +315,9 @@ docker run --rm --name hoppscotch -p 3000:3000 hoppscotch/hoppscotch:latest
 1. [Clone this repo](https://help.github.com/en/articles/cloning-a-repository) with git.
 2. Install pnpm using npm by running `npm install -g pnpm`.
 3. Install dependencies by running `pnpm install` within the directory that you cloned (probably `hoppscotch`).
-4. Build the release files with `pnpm run generate`.
-5. Find the built project in `packages/hoppscotch-app/dist`.
+4. Update [`.env.example`](https://github.com/hoppscotch/hoppscotch/blob/main/packages/hoppscotch-app/.env.example) file found in `packages/hoppscotch-app` with your own keys and rename it to `.env`.
+5. Build the release files with `pnpm run generate`.
+6. Find the built project in `packages/hoppscotch-app/dist`. Host these files on any [static hosting servers](https://www.pluralsight.com/blog/software-development/where-to-host-your-jamstack-site).
 
 ## **Contributing**
 
