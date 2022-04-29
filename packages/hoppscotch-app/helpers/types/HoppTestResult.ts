@@ -1,3 +1,5 @@
+import { Environment } from "@hoppscotch/data"
+
 export type HoppTestExpectResult = {
   status: "fail" | "pass" | "error"
   message: string
@@ -12,4 +14,23 @@ export type HoppTestData = {
 export type HoppTestResult = {
   tests: HoppTestData[]
   expectResults: HoppTestExpectResult[]
+  description: string
+  scriptError: boolean
+
+  envDiff: {
+    global: {
+      additions: Environment["variables"]
+      updations: Array<
+        Environment["variables"][number] & { previousValue: string }
+      >
+      deletions: Environment["variables"]
+    }
+    selected: {
+      additions: Environment["variables"]
+      updations: Array<
+        Environment["variables"][number] & { previousValue: string }
+      >
+      deletions: Environment["variables"]
+    }
+  }
 }

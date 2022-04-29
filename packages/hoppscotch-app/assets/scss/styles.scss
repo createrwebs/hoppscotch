@@ -1,7 +1,9 @@
-*,
-*::before,
-*::after {
+* {
   @apply backface-hidden;
+  @apply before:backface-hidden;
+  @apply after:backface-hidden;
+  @apply selection:bg-accentDark;
+  @apply selection:text-accentContrast;
 }
 
 :root {
@@ -19,7 +21,8 @@
   @apply bg-divider bg-clip-content;
   @apply rounded-full;
   @apply border-solid border-transparent border-4;
-  @apply hover:(bg-dividerDark bg-clip-content);
+  @apply hover:bg-dividerDark;
+  @apply hover:bg-clip-content;
 }
 
 ::-webkit-scrollbar {
@@ -27,23 +30,20 @@
   @apply h-4;
 }
 
+.hide-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
 .hide-scrollbar::-webkit-scrollbar {
   @apply hidden;
 }
 
-::selection {
-  @apply bg-divider;
-}
-
-.cm-focused {
-  @apply !outline-none;
-}
-
 input::placeholder,
 textarea::placeholder,
-.CodeMirror-empty {
+.cm-placeholder {
   @apply text-secondary;
-  @apply opacity-25;
+  @apply opacity-35;
 }
 
 input,
@@ -54,6 +54,7 @@ textarea {
 
 html {
   scroll-behavior: smooth;
+  scrollbar-gutter: stable;
 }
 
 body {
@@ -62,11 +63,10 @@ body {
   @apply font-medium;
   @apply select-none;
   @apply overflow-x-hidden;
+  @apply text-body;
+  @apply leading-body;
 
   animation: fade 300ms forwards;
-  font-size: var(--body-font-size);
-  line-height: var(--body-line-height);
-  overflow: overlay;
   -webkit-tap-highlight-color: transparent;
   -webkit-touch-callout: none;
 }
@@ -101,16 +101,18 @@ body {
 
 .material-icons {
   @apply flex-shrink-0;
+  @apply overflow-hidden;
 
-  font-size: var(--body-line-height) !important;
-  width: var(--body-line-height);
+  font-size: var(--line-height-body) !important;
+  width: var(--line-height-body);
 }
 
 .svg-icons {
   @apply flex-shrink-0;
+  @apply overflow-hidden;
 
-  height: var(--body-line-height);
-  width: var(--body-line-height);
+  height: var(--line-height-body);
+  width: var(--line-height-body);
 }
 
 a {
@@ -119,9 +121,8 @@ a {
   @apply no-underline;
   @apply outline-none;
   @apply transition;
-
-  font-size: var(--body-font-size);
-  line-height: var(--body-line-height);
+  @apply text-body;
+  @apply leading-body;
 
   &.link {
     @apply items-center;
@@ -130,48 +131,61 @@ a {
     @apply text-accent;
     @apply rounded;
     @apply hover:text-accentDark;
-    @apply focus-visible:(ring ring-accent);
+    @apply focus-visible:ring;
+    @apply focus-visible:ring-accent;
   }
 }
 
-.tippy-popper {
+.cm-tooltip {
   .tooltip-theme {
-    @apply bg-tooltip;
-    @apply text-primary;
-    @apply font-semibold;
-    @apply py-1 px-2;
+    @apply fixed;
+    @apply -mt-6;
+  }
+}
+
+.tooltip-theme {
+  @apply bg-tooltip;
+  @apply text-primary;
+  @apply font-semibold;
+  @apply py-1 px-2;
+  @apply rounded;
+  @apply truncate;
+  @apply shadow;
+  @apply leading-body;
+
+  font-size: 86%;
+
+  xmp {
+    @apply hidden;
+    @apply sm:inline-flex;
+    @apply font-sans;
+    @apply bg-gray-500;
+    @apply bg-opacity-45;
+    @apply text-primaryLight;
+    @apply rounded-sm;
+    @apply px-1;
+    @apply ml-1;
+    @apply my-0;
     @apply truncate;
-    @apply shadow;
 
-    font-size: 88%;
-    line-height: var(--body-line-height);
-
-    kbd {
-      @apply inline-flex;
-      @apply font-sans;
-      @apply bg-gray-500;
-      @apply bg-opacity-45;
-      @apply text-primaryLight;
-      @apply rounded-sm;
-      @apply px-1;
-      @apply ml-1;
-      @apply truncate;
+    &.expand-loop {
+      @apply bg-error;
+      @apply text-accentContrast;
     }
   }
+}
 
-  .popover-theme {
-    @apply bg-popover;
-    @apply text-secondary;
-    @apply p-2;
-    @apply shadow-lg;
-    @apply focus:outline-none;
+.popover-theme {
+  @apply bg-popover;
+  @apply text-secondary;
+  @apply p-2;
+  @apply shadow-lg;
+  @apply text-body;
+  @apply leading-body;
+  @apply focus:outline-none;
 
-    font-size: var(--body-font-size);
-    line-height: var(--body-line-height);
-
-    .tippy-roundarrow svg {
-      @apply fill-popover;
-    }
+  .tippy-roundarrow svg {
+    @apply fill-popover;
   }
 }
 
@@ -215,13 +229,12 @@ input,
 select,
 textarea,
 button {
-  @apply focus:outline-none;
   @apply truncate;
   @apply transition;
+  @apply text-body;
+  @apply leading-body;
+  @apply focus:outline-none;
   @apply disabled:cursor-not-allowed;
-
-  font-size: var(--body-font-size);
-  line-height: var(--body-line-height);
 }
 
 .input[type="file"],
@@ -231,7 +244,6 @@ button {
 }
 
 .floating-input ~ label {
-  @apply font-medium;
   @apply py-0.5;
   @apply px-2;
   @apply m-2;
@@ -247,7 +259,7 @@ button {
   @apply transform;
   @apply origin-top-left;
   @apply scale-75;
-  @apply -translate-y-5;
+  @apply -translate-y-4;
   @apply translate-x-1;
 }
 
@@ -314,17 +326,18 @@ pre.ace_editor {
 }
 
 .toasted-container {
+  @apply max-w-md;
+
   .toasted {
     &.toasted-primary {
       @apply bg-tooltip;
       @apply text-primary;
-      @apply justify-start;
+      @apply justify-between;
       @apply shadow;
       @apply font-medium;
       @apply transition;
-
-      font-size: var(--body-font-size);
-      line-height: var(--body-line-height);
+      @apply text-body;
+      @apply leading-body;
 
       .action {
         @apply bg-gray-500;
@@ -336,11 +349,11 @@ pre.ace_editor {
         @apply rounded;
         @apply text-current;
         @apply normal-case;
-        @apply hover:(bg-opacity-20 no-underline);
         @apply font-medium;
-
-        font-size: var(--body-font-size);
-        line-height: var(--body-line-height);
+        @apply text-body;
+        @apply leading-body;
+        @apply hover:bg-opacity-20;
+        @apply hover:no-underline;
       }
     }
 
@@ -391,7 +404,7 @@ pre.ace_editor {
 .smart-splitter .splitpanes__splitter::before {
   @apply absolute;
   @apply inset-0;
-  @apply bg-dividerLight;
+  @apply bg-accentLight;
   @apply opacity-0;
   @apply z-20;
   @apply transition;
@@ -435,34 +448,57 @@ pre.ace_editor {
   @apply w-full;
 }
 
-.CodeMirror {
-  @apply !h-auto;
+.cm-focused {
+  @apply select-auto;
+  @apply !outline-none;
 
-  font-size: var(--body-font-size);
-
-  &:not(.CodeMirror-focused) .CodeMirror-activeline-background {
-    background: transparent !important;
-  }
-
-  .CodeMirror-dialog-top {
+  .cm-activeLine {
     @apply bg-primaryLight;
-    @apply border-dividerLight;
-    @apply px-4;
-    @apply py-2;
-    @apply z-5;
   }
 
-  .CodeMirror-scroll {
-    @apply min-h-64;
+  .cm-activeLineGutter {
+    @apply bg-primaryDark;
   }
+}
 
-  * {
-    font-family: "Roboto Mono", monospace;
+.cm-editor {
+  .cm-line::selection {
+    background-color: var(--accent-dark-color) !important;
+    color: var(--accent-contrast-color) !important;
   }
+  .cm-line ::selection {
+    background-color: var(--accent-dark-color) !important;
+    color: var(--accent-contrast-color) !important;
+  }
+}
+
+.shortcut-key {
+  @apply inline-flex;
+  @apply font-sans;
+  @apply text-tiny;
+  @apply bg-divider;
+  @apply rounded;
+  @apply ml-2;
+  @apply px-1;
+  @apply transition;
+}
+
+.capitalize-first {
+  @apply first-letter:capitalize;
+}
+
+details summary::-webkit-details-marker {
+  @apply hidden;
 }
 
 @media (max-width: 767px) {
   main {
     margin-bottom: env(safe-area-inset-bottom);
+  }
+}
+
+.env-highlight {
+  * {
+    @apply text-accentContrast;
   }
 }

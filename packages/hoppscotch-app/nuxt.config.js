@@ -1,4 +1,5 @@
 import languages from "./languages"
+import pkg from "./package.json"
 
 require("dotenv").config()
 
@@ -11,8 +12,9 @@ export const options = {
   keywords:
     "hoppscotch, hopp scotch, hoppscotch online, hoppscotch app, postwoman, postwoman chrome, postwoman online, postwoman for mac, postwoman app, postwoman for windows, postwoman google chrome, postwoman chrome app, get postwoman, postwoman web, postwoman android, postwoman app for chrome, postwoman mobile app, postwoman web app, api, request, testing, tool, rest, websocket, sse, graphql, socketio",
   loading: {
-    color: "var(--accent-color)",
+    color: "var(--divider-dark-color)",
     background: "var(--primary-color)",
+    accent: "var(--accent-color)",
   },
   app: {
     background: "#202124",
@@ -80,7 +82,7 @@ export default {
 
   // Customize the progress-bar color (https://nuxtjs.org/api/configuration-loading/#customizing-the-progress-bar)
   loading: {
-    color: options.loading.color,
+    color: options.loading.accent,
     continuous: true,
   },
 
@@ -99,7 +101,6 @@ export default {
     "~/plugins/v-tippy",
     "~/plugins/v-focus",
     "~/plugins/v-textarea",
-    "~/plugins/vue-apollo",
     "~/plugins/init-fb.ts",
     "~/plugins/crisp",
     { src: "~/plugins/web-worker", ssr: false },
@@ -145,6 +146,8 @@ export default {
     "@nuxtjs/toast",
     // https://github.com/nuxt-community/i18n-module
     "@nuxtjs/i18n",
+    // https://github.com/nuxt-community/sentry-module
+    "@nuxtjs/sentry",
     // https://github.com/nuxt-community/robots-module
     "@nuxtjs/robots",
     // https://github.com/nuxt-community/sitemap-module
@@ -197,6 +200,12 @@ export default {
     id: process.env.GTM_ID,
   },
 
+  // Sentry module configuration
+  sentry: {
+    dsn: process.env.SENTRY_DSN,
+    // lazy: true,
+  },
+
   // Sitemap module configuration (https://github.com/nuxt-community/sitemap-module)
   sitemap: {
     hostname: process.env.BASE_URL,
@@ -243,6 +252,11 @@ export default {
 
   // Build Configuration (https://go.nuxtjs.dev/config-build)
   build: {
+    loaders: {
+      vue: {
+        compiler: require("vue-template-babel-compiler"),
+      },
+    },
     // You can extend webpack config here
     extend(config, { isDev, isClient }) {
       // Sets webpack's mode to development if `isDev` is true.
@@ -325,6 +339,10 @@ export default {
     APP_ID: process.env.APP_ID,
     MEASUREMENT_ID: process.env.MEASUREMENT_ID,
     BASE_URL: process.env.BASE_URL,
+  },
+
+  publicRuntimeConfig: {
+    clientVersion: pkg.version,
   },
 
   // Router configuration (https://nuxtjs.org/api/configuration-router)

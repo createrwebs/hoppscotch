@@ -1,15 +1,14 @@
 import eq from "lodash/eq"
 import { pluck } from "rxjs/operators"
-import DispatchingStore, { defineDispatchers } from "./DispatchingStore"
-import { completedRESTResponse$ } from "./RESTSession"
 import {
   HoppRESTRequest,
   translateToNewRequest,
-} from "~/helpers/types/HoppRESTRequest"
-import {
   HoppGQLRequest,
   translateToGQLRequest,
-} from "~/helpers/types/HoppGQLRequest"
+  GQL_REQ_SCHEMA_VERSION,
+} from "@hoppscotch/data"
+import DispatchingStore, { defineDispatchers } from "./DispatchingStore"
+import { completedRESTResponse$ } from "./RESTSession"
 
 export type RESTHistoryEntry = {
   v: number
@@ -24,6 +23,8 @@ export type RESTHistoryEntry = {
   star: boolean
 
   id?: string // For when Firebase Firestore is set
+
+  updatedOn?: Date
 }
 
 export type GQLHistoryEntry = {
@@ -35,6 +36,8 @@ export type GQLHistoryEntry = {
   star: boolean
 
   id?: string // For when Firestore ID is set
+
+  updatedOn?: Date
 }
 
 export function makeRESTHistoryEntry(
@@ -52,6 +55,7 @@ export function makeGQLHistoryEntry(
   return {
     v: 1,
     ...x,
+    updatedOn: new Date(),
   }
 }
 
@@ -63,7 +67,7 @@ export function translateToNewRESTHistory(x: any): RESTHistoryEntry {
   const star = x.star ?? false
   const duration = x.duration ?? null
   const statusCode = x.status ?? null
-
+  const updatedOn = x.updatedOn ?? null
   const obj: RESTHistoryEntry = makeRESTHistoryEntry({
     request,
     star,
@@ -71,6 +75,7 @@ export function translateToNewRESTHistory(x: any): RESTHistoryEntry {
       duration,
       statusCode,
     },
+    updatedOn,
   })
 
   if (x.id) obj.id = x.id
@@ -79,17 +84,21 @@ export function translateToNewRESTHistory(x: any): RESTHistoryEntry {
 }
 
 export function translateToNewGQLHistory(x: any): GQLHistoryEntry {
-  if (x.v === 1) return x
+  if (x.v === 1 && x.request.v === GQL_REQ_SCHEMA_VERSION) return x
 
   // Legacy
-  const request = translateToGQLRequest(x)
+  const request = x.request
+    ? translateToGQLRequest(x.request)
+    : translateToGQLRequest(x)
   const star = x.star ?? false
   const response = x.response ?? ""
+  const updatedOn = x.updatedOn ?? ""
 
   const obj: GQLHistoryEntry = makeGQLHistoryEntry({
     request,
     star,
     response,
+    updatedOn,
   })
 
   if (x.id) obj.id = x.id
@@ -289,7 +298,12 @@ export function toggleGraphqlHistoryEntryStar(entry: GQLHistoryEntry) {
 // Listen to completed responses to add to history
 completedRESTResponse$.subscribe((res) => {
   if (res !== null) {
-    if (res.type === "loading" || res.type === "network_fail") return
+    if (
+      res.type === "loading" ||
+      res.type === "network_fail" ||
+      res.type === "script_fail"
+    )
+      return
 
     addRESTHistoryEntry(
       makeRESTHistoryEntry({
@@ -310,6 +324,7 @@ completedRESTResponse$.subscribe((res) => {
           statusCode: res.statusCode,
         },
         star: false,
+        updatedOn: new Date(),
       })
     )
   }

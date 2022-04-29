@@ -1,5 +1,10 @@
 <template>
-  <SmartModal v-if="show" :title="`${$t('collection.new')}`" @close="hideModal">
+  <SmartModal
+    v-if="show"
+    dialog
+    :title="`${$t('collection.new')}`"
+    @close="hideModal"
+  >
     <template #body>
       <div class="flex flex-col px-2">
         <input
@@ -34,8 +39,8 @@
 
 <script lang="ts">
 import { defineComponent } from "@nuxtjs/composition-api"
-import { HoppGQLRequest } from "~/helpers/types/HoppGQLRequest"
-import { addGraphqlCollection, makeCollection } from "~/newstore/collections"
+import { HoppGQLRequest, makeCollection } from "@hoppscotch/data"
+import { addGraphqlCollection } from "~/newstore/collections"
 
 export default defineComponent({
   props: {
@@ -49,9 +54,7 @@ export default defineComponent({
   methods: {
     addNewCollection() {
       if (!this.name) {
-        this.$toast.error(`${this.$t("collection.invalid_name")}`, {
-          icon: "error_outline",
-        })
+        this.$toast.error(`${this.$t("collection.invalid_name")}`)
         return
       }
 

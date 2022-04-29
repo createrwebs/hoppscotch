@@ -1,15 +1,6 @@
 <template>
   <button
-    class="
-      cursor-pointer
-      flex flex-1
-      py-2
-      px-6
-      transition
-      items-center
-      search-entry
-      focus:outline-none
-    "
+    class="flex items-center flex-1 px-6 py-3 font-medium cursor-pointer transition search-entry focus:outline-none"
     :class="{ active: active }"
     tabindex="-1"
     @click="$emit('action', shortcut.action)"
@@ -21,10 +12,10 @@
       :name="shortcut.icon"
     />
     <span
-      class="flex flex-1 mr-4 font-medium transition"
+      class="flex flex-1 mr-4 transition"
       :class="{ 'text-secondaryDark': active }"
     >
-      {{ $t(shortcut.label) }}
+      {{ t(shortcut.label) }}
     </span>
     <span
       v-for="(key, keyIndex) in shortcut.keys"
@@ -37,8 +28,17 @@
 </template>
 
 <script setup lang="ts">
+import { useI18n } from "~/helpers/utils/composables"
+
+const t = useI18n()
+
 defineProps<{
-  shortcut: Object
+  shortcut: {
+    label: string
+    keys: string[]
+    action: string
+    icon: string
+  }
   active: Boolean
 }>()
 </script>
@@ -55,7 +55,6 @@ defineProps<{
     @apply bg-transparent;
     @apply z-2;
     @apply w-0.5;
-    @apply transition;
 
     content: "";
   }
@@ -68,14 +67,5 @@ defineProps<{
       @apply bg-accentLight;
     }
   }
-}
-
-.shortcut-key {
-  @apply bg-dividerLight;
-  @apply rounded;
-  @apply ml-2;
-  @apply py-1;
-  @apply px-2;
-  @apply inline-flex;
 }
 </style>

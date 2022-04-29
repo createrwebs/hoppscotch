@@ -1,5 +1,10 @@
 <template>
-  <SmartModal v-if="show" :title="$t('modal.edit_request')" @close="hideModal">
+  <SmartModal
+    v-if="show"
+    dialog
+    :title="$t('modal.edit_request')"
+    @close="hideModal"
+  >
     <template #body>
       <div class="flex flex-col px-2">
         <input
@@ -19,7 +24,11 @@
     </template>
     <template #footer>
       <span>
-        <ButtonPrimary :label="$t('action.save')" @click.native="saveRequest" />
+        <ButtonPrimary
+          :label="$t('action.save')"
+          :loading="loadingState"
+          @click.native="saveRequest"
+        />
         <ButtonSecondary
           :label="$t('action.cancel')"
           @click.native="hideModal"
@@ -35,7 +44,8 @@ import { defineComponent } from "@nuxtjs/composition-api"
 export default defineComponent({
   props: {
     show: Boolean,
-    placeholderReqName: { type: String, default: null },
+    editingRequestName: { type: String, default: null },
+    loadingState: Boolean,
   },
   data() {
     return {
@@ -44,16 +54,18 @@ export default defineComponent({
       },
     }
   },
+  watch: {
+    editingRequestName(val) {
+      this.requestUpdateData.name = val
+    },
+  },
   methods: {
     saveRequest() {
       if (!this.requestUpdateData.name) {
-        this.$toast.error(this.$t("request.invalid_name"), {
-          icon: "error_outline",
-        })
+        this.$toast.error(this.$t("request.invalid_name"))
         return
       }
       this.$emit("submit", this.requestUpdateData)
-      this.hideModal()
     },
     hideModal() {
       this.requestUpdateData = { name: null }

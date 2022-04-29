@@ -1,6 +1,7 @@
 <template>
   <SmartModal
     v-if="show"
+    dialog
     :title="`${$t('folder.edit')}`"
     @close="$emit('hide-modal')"
   >
@@ -45,18 +46,22 @@ export default defineComponent({
     show: Boolean,
     folder: { type: Object, default: () => {} },
     folderPath: { type: String, default: null },
+    editingFolderName: { type: String, default: null },
   },
   data() {
     return {
       name: "",
     }
   },
+  watch: {
+    editingFolderName(val) {
+      this.name = val
+    },
+  },
   methods: {
     editFolder() {
       if (!this.name) {
-        this.$toast.error(`${this.$t("collection.invalid_name")}`, {
-          icon: "error_outline",
-        })
+        this.$toast.error(`${this.$t("collection.invalid_name")}`)
         return
       }
       editGraphqlFolder(this.folderPath, {

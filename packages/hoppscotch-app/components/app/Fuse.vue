@@ -11,11 +11,11 @@
     />
     <div
       v-if="searchResults.length === 0"
-      class="flex flex-col text-secondaryLight p-4 items-center justify-center"
+      class="flex flex-col items-center justify-center p-4 text-secondaryLight"
     >
-      <i class="opacity-75 pb-2 material-icons">manage_search</i>
-      <span class="text-center">
-        {{ $t("state.nothing_found") }} "{{ search }}"
+      <i class="pb-2 opacity-75 material-icons">manage_search</i>
+      <span class="my-2 text-center">
+        {{ t("state.nothing_found") }} "{{ search }}"
       </span>
     </div>
   </div>
@@ -26,6 +26,9 @@ import { computed, onUnmounted, onMounted } from "@nuxtjs/composition-api"
 import Fuse from "fuse.js"
 import { useArrowKeysNavigation } from "~/helpers/powerSearchNavigation"
 import { HoppAction } from "~/helpers/actions"
+import { useI18n } from "~/helpers/utils/composables"
+
+const t = useI18n()
 
 const props = defineProps<{
   input: Record<string, any>[]
@@ -50,17 +53,17 @@ const searchResultsItems = computed(() =>
 
 const emitSearchAction = (action: HoppAction) => emit("action", action)
 
-const { bindArrowKeysListerners, unbindArrowKeysListerners, selectedEntry } =
+const { bindArrowKeysListeners, unbindArrowKeysListeners, selectedEntry } =
   useArrowKeysNavigation(searchResultsItems, {
     onEnter: emitSearchAction,
     stopPropagation: true,
   })
 
 onMounted(() => {
-  bindArrowKeysListerners()
+  bindArrowKeysListeners()
 })
 
 onUnmounted(() => {
-  unbindArrowKeysListerners()
+  unbindArrowKeysListeners()
 })
 </script>

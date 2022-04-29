@@ -1,11 +1,12 @@
 import { distinctUntilChanged, pluck } from "rxjs/operators"
-import DispatchingStore, { defineDispatchers } from "./DispatchingStore"
-import { useStream } from "~/helpers/utils/composables"
 import {
   GQLHeader,
   HoppGQLRequest,
   makeGQLRequest,
-} from "~/helpers/types/HoppGQLRequest"
+  HoppGQLAuth,
+} from "@hoppscotch/data"
+import DispatchingStore, { defineDispatchers } from "./DispatchingStore"
+import { useStream } from "~/helpers/utils/composables"
 
 type GQLSession = {
   request: HoppGQLRequest
@@ -15,10 +16,12 @@ type GQLSession = {
 
 export const defaultGQLSession: GQLSession = {
   request: makeGQLRequest({
-    name: "",
+    name: "Untitled request",
     url: "https://echo.hoppscotch.io/graphql",
     headers: [],
-    variables: `{ "id": "1" }`,
+    variables: `{
+  "id": "1"
+}`,
     query: `query Request {
   method
   url
@@ -28,6 +31,10 @@ export const defaultGQLSession: GQLSession = {
   }
 }
 `,
+    auth: {
+      authType: "none",
+      authActive: true,
+    },
   }),
   schema: "",
   response: "",
@@ -112,6 +119,14 @@ const dispatchers = defineDispatchers({
   setResponse(_: GQLSession, { newResponse }: { newResponse: string }) {
     return {
       response: newResponse,
+    }
+  },
+  setAuth(curr: GQLSession, { newAuth }: { newAuth: HoppGQLAuth }) {
+    return {
+      request: {
+        ...curr.request,
+        auth: newAuth,
+      },
     }
   },
 })
@@ -217,11 +232,20 @@ export function setGQLSession(session: GQLSession) {
 }
 
 export function useGQLRequestName() {
-  return useStream(gqlName$, "", (newName) => {
+  return useStream(gqlName$, gqlSessionStore.value.request.name, (newName) => {
     gqlSessionStore.dispatch({
       dispatcher: "setName",
       payload: { newName },
     })
+  })
+}
+
+export function setGQLAuth(newAuth: HoppGQLAuth) {
+  gqlSessionStore.dispatch({
+    dispatcher: "setAuth",
+    payload: {
+      newAuth,
+    },
   })
 }
 
@@ -248,5 +272,10 @@ export const gqlHeaders$ = gqlSessionStore.subject$.pipe(
 
 export const gqlResponse$ = gqlSessionStore.subject$.pipe(
   pluck("response"),
+  distinctUntilChanged()
+)
+
+export const gqlAuth$ = gqlSessionStore.subject$.pipe(
+  pluck("request", "auth"),
   distinctUntilChanged()
 )

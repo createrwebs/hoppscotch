@@ -1,6 +1,7 @@
 <template>
   <SmartModal
     v-if="show"
+    dialog
     :title="$t('folder.edit')"
     @close="$emit('hide-modal')"
   >
@@ -23,7 +24,11 @@
     </template>
     <template #footer>
       <span>
-        <ButtonPrimary :label="$t('action.save')" @click.native="editFolder" />
+        <ButtonPrimary
+          :label="$t('action.save')"
+          :loading="loadingState"
+          @click.native="editFolder"
+        />
         <ButtonSecondary
           :label="$t('action.cancel')"
           @click.native="hideModal"
@@ -39,22 +44,26 @@ import { defineComponent } from "@nuxtjs/composition-api"
 export default defineComponent({
   props: {
     show: Boolean,
+    editingFolderName: { type: String, default: null },
+    loadingState: Boolean,
   },
   data() {
     return {
       name: null,
     }
   },
+  watch: {
+    editingFolderName(val) {
+      this.name = val
+    },
+  },
   methods: {
     editFolder() {
       if (!this.name) {
-        this.$toast.error(this.$t("folder.invalid_name"), {
-          icon: "error_outline",
-        })
+        this.$toast.error(this.$t("folder.invalid_name"))
         return
       }
       this.$emit("submit", this.name)
-      this.hideModal()
     },
     hideModal() {
       this.name = null

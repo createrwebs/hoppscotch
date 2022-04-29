@@ -1,8 +1,9 @@
 <template>
   <SmartModal
     v-if="show"
-    :title="$t('team.select_a_team')"
-    @close="$emit('hide-modal')"
+    dialog
+    :title="t('team.select_a_team')"
+    @close="hideModal"
   >
     <template #body>
       <Teams :modal="true" />
@@ -10,17 +11,20 @@
   </SmartModal>
 </template>
 
-<script>
-import { defineComponent } from "@nuxtjs/composition-api"
+<script setup lang="ts">
+import { useI18n } from "~/helpers/utils/composables"
 
-export default defineComponent({
-  props: {
-    show: Boolean,
-  },
-  methods: {
-    hideModal() {
-      this.$emit("hide-modal")
-    },
-  },
-})
+const t = useI18n()
+
+defineProps<{
+  show: Boolean
+}>()
+
+const emit = defineEmits<{
+  (e: "hide-modal"): void
+}>()
+
+const hideModal = () => {
+  emit("hide-modal")
+}
 </script>

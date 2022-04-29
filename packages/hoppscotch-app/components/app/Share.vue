@@ -1,15 +1,16 @@
 <template>
   <SmartModal
     v-if="show"
-    :title="$t('app.invite_your_friends')"
+    dialog
+    :title="t('app.invite_your_friends')"
     @close="hideModal"
   >
     <template #body>
-      <p class="text-secondaryLight mb-8 px-2">
-        {{ $t("app.invite_description") }}
+      <p class="px-2 mb-8 text-secondaryLight">
+        {{ t("app.invite_description") }}
       </p>
-      <div class="flex flex-col space-y-2 px-2">
-        <div class="grid gap-4 grid-cols-3">
+      <div class="flex flex-col px-2 space-y-2">
+        <div class="grid grid-cols-3 gap-4">
           <a
             v-for="(platform, index) in platforms"
             :key="`platform-${index}`"
@@ -17,15 +18,15 @@
             target="_blank"
             class="share-link"
           >
-            <SmartIcon :name="platform.icon" class="h-6 w-6" />
+            <SmartIcon :name="platform.icon" class="w-6 h-6" />
             <span class="mt-3">
               {{ platform.name }}
             </span>
           </a>
           <button class="share-link" @click="copyAppLink">
-            <SmartIcon class="h-6 text-xl w-6" :name="copyIcon" />
+            <SmartIcon class="w-6 h-6 text-xl" :name="copyIcon" />
             <span class="mt-3">
-              {{ $t("app.copy") }}
+              {{ t("app.copy") }}
             </span>
           </button>
         </div>
@@ -35,14 +36,13 @@
 </template>
 
 <script setup lang="ts">
-import { ref, useContext } from "@nuxtjs/composition-api"
+import { ref } from "@nuxtjs/composition-api"
 import { copyToClipboard } from "~/helpers/utils/clipboard"
+import { useI18n, useToast } from "~/helpers/utils/composables"
 
-const {
-  $toast,
-  app: { i18n },
-} = useContext()
-const t = i18n.t.bind(i18n)
+const t = useI18n()
+
+const toast = useToast()
 
 defineProps<{
   show: Boolean
@@ -57,7 +57,7 @@ const text = "Hoppscotch - Open source API development ecosystem."
 const description =
   "Helps you create requests faster, saving precious time on development."
 const subject = "Checkout Hoppscotch - an open source API development ecosystem"
-const summary = `Hi there!%0D%0A%0D%0AI thought you’ll like this new platform that I joined called Hoppscotch - https://hoppscotch.io.%0D%0AIt is a simple and intuitive interface for creating and managing your APIs. You can build, test, document, and share your APIs.%0D%0A%0D%0AThe best part about Hoppscotch is that it is open source and free to get started.%0D%0A%0D%0A`
+const summary = `Hi there!%0D%0A%0D%0AI thought you'll like this new platform that I joined called Hoppscotch - https://hoppscotch.io.%0D%0AIt is a simple and intuitive interface for creating and managing your APIs. You can build, test, document, and share your APIs.%0D%0A%0D%0AThe best part about Hoppscotch is that it is open source and free to get started.%0D%0A%0D%0A`
 const twitter = "hoppscotch_io"
 
 const copyIcon = ref("copy")
@@ -92,9 +92,7 @@ const platforms = [
 const copyAppLink = () => {
   copyToClipboard(url)
   copyIcon.value = "check"
-  $toast.success(t("state.copied_to_clipboard").toString(), {
-    icon: "content_paste",
-  })
+  toast.success(`${t("state.copied_to_clipboard")}`)
   setTimeout(() => (copyIcon.value = "copy"), 1000)
 }
 

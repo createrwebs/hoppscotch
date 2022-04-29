@@ -1,8 +1,8 @@
 <template>
-  <SmartModal v-if="show" :title="$t('team.edit')" @close="hideModal">
+  <SmartModal v-if="show" dialog :title="t('team.edit')" @close="hideModal">
     <template #body>
       <div class="flex flex-col px-2">
-        <div class="flex relative">
+        <div class="relative flex">
           <input
             id="selectLabelTeamEdit"
             v-model="name"
@@ -14,17 +14,17 @@
             @keyup.enter="saveTeam"
           />
           <label for="selectLabelTeamEdit">
-            {{ $t("action.label") }}
+            {{ t("action.label") }}
           </label>
         </div>
-        <div class="flex pt-4 flex-1 justify-between items-center">
+        <div class="flex items-center justify-between flex-1 pt-4">
           <label for="memberList" class="p-4">
-            {{ $t("team.members") }}
+            {{ t("team.members") }}
           </label>
           <div class="flex">
             <ButtonSecondary
               svg="user-plus"
-              :label="$t('team.invite')"
+              :label="t('team.invite')"
               filled
               @click.native="
                 () => {
@@ -39,7 +39,7 @@
           class="flex flex-col items-center justify-center"
         >
           <SmartSpinner class="mb-4" />
-          <span class="text-secondaryLight">{{ $t("state.loading") }}</span>
+          <span class="text-secondaryLight">{{ t("state.loading") }}</span>
         </div>
         <div
           v-if="
@@ -47,37 +47,24 @@
             E.isRight(teamDetails.data) &&
             teamDetails.data.right.team.teamMembers
           "
-          class="divide-y divide-dividerLight border-divider border rounded"
+          class="border rounded divide-y divide-dividerLight border-divider"
         >
           <div
             v-if="teamDetails.data.right.team.teamMembers === 0"
-            class="
-              flex flex-col
-              text-secondaryLight
-              p-4
-              items-center
-              justify-center
-            "
+            class="flex flex-col items-center justify-center p-4 text-secondaryLight"
           >
             <img
               :src="`/images/states/${$colorMode.value}/add_group.svg`"
               loading="lazy"
-              class="
-                flex-col
-                my-4
-                object-contain object-center
-                h-16
-                w-16
-                inline-flex
-              "
-              :alt="$t('empty.members')"
+              class="inline-flex flex-col object-contain object-center w-16 h-16 my-4"
+              :alt="`${t('empty.members')}`"
             />
-            <span class="text-center pb-4">
-              {{ $t("empty.members") }}
+            <span class="pb-4 text-center">
+              {{ t("empty.members") }}
             </span>
             <ButtonSecondary
               svg="user-plus"
-              :label="$t('team.invite')"
+              :label="t('team.invite')"
               @click.native="
                 () => {
                   emit('invite-team')
@@ -89,11 +76,11 @@
             <div
               v-for="(member, index) in membersList"
               :key="`member-${index}`"
-              class="divide-x divide-dividerLight flex"
+              class="flex divide-x divide-dividerLight"
             >
               <input
-                class="bg-transparent flex flex-1 py-2 px-4"
-                :placeholder="$t('team.email')"
+                class="flex flex-1 px-4 py-2 bg-transparent"
+                :placeholder="`${t('team.email')}`"
                 :name="'param' + index"
                 :value="member.email"
                 readonly
@@ -109,61 +96,72 @@
                   <template #trigger>
                     <span class="select-wrapper">
                       <input
-                        class="
-                          bg-transparent
-                          cursor-pointer
-                          flex flex-1
-                          py-2
-                          px-4
-                        "
-                        :placeholder="$t('team.permissions')"
+                        class="flex flex-1 px-4 py-2 bg-transparent cursor-pointer"
+                        :placeholder="`${t('team.permissions')}`"
                         :name="'value' + index"
-                        :value="
-                          typeof member.role === 'string'
-                            ? member.role
-                            : JSON.stringify(member.role)
-                        "
+                        :value="member.role"
                         readonly
                       />
                     </span>
                   </template>
-                  <SmartItem
-                    label="OWNER"
-                    @click.native="
-                      () => {
-                        updateMemberRole(member.userID, 'OWNER')
-                        memberOptions[index].tippy().hide()
-                      }
-                    "
-                  />
-                  <SmartItem
-                    label="EDITOR"
-                    @click.native="
-                      () => {
-                        updateMemberRole(member.userID, 'EDITOR')
-                        memberOptions[index].tippy().hide()
-                      }
-                    "
-                  />
-                  <SmartItem
-                    label="VIEWER"
-                    @click.native="
-                      () => {
-                        updateMemberRole(member.userID, 'VIEWER')
-                        memberOptions[index].tippy().hide()
-                      }
-                    "
-                  />
+                  <div class="flex flex-col" role="menu">
+                    <SmartItem
+                      label="OWNER"
+                      :icon="
+                        member.role === 'OWNER'
+                          ? 'radio_button_checked'
+                          : 'radio_button_unchecked'
+                      "
+                      :active="member.role === 'OWNER'"
+                      @click.native="
+                        () => {
+                          updateMemberRole(member.userID, 'OWNER')
+                          memberOptions[index].tippy().hide()
+                        }
+                      "
+                    />
+                    <SmartItem
+                      label="EDITOR"
+                      :icon="
+                        member.role === 'EDITOR'
+                          ? 'radio_button_checked'
+                          : 'radio_button_unchecked'
+                      "
+                      :active="member.role === 'EDITOR'"
+                      @click.native="
+                        () => {
+                          updateMemberRole(member.userID, 'EDITOR')
+                          memberOptions[index].tippy().hide()
+                        }
+                      "
+                    />
+                    <SmartItem
+                      label="VIEWER"
+                      :icon="
+                        member.role === 'VIEWER'
+                          ? 'radio_button_checked'
+                          : 'radio_button_unchecked'
+                      "
+                      :active="member.role === 'VIEWER'"
+                      @click.native="
+                        () => {
+                          updateMemberRole(member.userID, 'VIEWER')
+                          memberOptions[index].tippy().hide()
+                        }
+                      "
+                    />
+                  </div>
                 </tippy>
               </span>
               <div class="flex">
                 <ButtonSecondary
                   id="member"
                   v-tippy="{ theme: 'tooltip' }"
-                  :title="$t('action.remove')"
-                  svg="trash"
+                  :title="t('action.remove')"
+                  svg="user-minus"
                   color="red"
-                  @click.native="removeExistingTeamMember(member.userID)"
+                  :loading="isLoadingIndex === index"
+                  @click.native="removeExistingTeamMember(member.userID, index)"
                 />
               </div>
             </div>
@@ -174,15 +172,19 @@
           class="flex flex-col items-center"
         >
           <i class="mb-4 material-icons">help_outline</i>
-          {{ $t("error.something_went_wrong") }}
+          {{ t("error.something_went_wrong") }}
         </div>
       </div>
     </template>
     <template #footer>
       <span>
-        <ButtonPrimary :label="$t('action.save')" @click.native="saveTeam" />
+        <ButtonPrimary
+          :label="t('action.save')"
+          :loading="isLoading"
+          @click.native="saveTeam"
+        />
         <ButtonSecondary
-          :label="$t('action.cancel')"
+          :label="t('action.cancel')"
           @click.native="hideModal"
         />
       </span>
@@ -191,13 +193,7 @@
 </template>
 
 <script setup lang="ts">
-import {
-  computed,
-  ref,
-  toRef,
-  useContext,
-  watch,
-} from "@nuxtjs/composition-api"
+import { computed, ref, toRef, watch } from "@nuxtjs/composition-api"
 import * as E from "fp-ts/Either"
 import {
   GetTeamDocument,
@@ -215,9 +211,13 @@ import {
 } from "~/helpers/backend/mutations/Team"
 import { TeamNameCodec } from "~/helpers/backend/types/TeamName"
 import { useGQLQuery } from "~/helpers/backend/GQLClient"
+import { useI18n, useToast } from "~/helpers/utils/composables"
+
+const t = useI18n()
 
 const emit = defineEmits<{
   (e: "hide-modal"): void
+  (e: "refetch-teams"): void
 }>()
 
 const memberOptions = ref<any | null>(null)
@@ -230,11 +230,7 @@ const props = defineProps<{
   editingTeamID: string
 }>()
 
-const {
-  $toast,
-  app: { i18n },
-} = useContext()
-const t = i18n.t.bind(i18n)
+const toast = useToast()
 
 const name = toRef(props.editingTeam, "name")
 
@@ -257,6 +253,7 @@ const teamDetails = useGQLQuery<GetTeamQuery, GetTeamQueryVariables, "">({
   variables: {
     teamID: props.editingTeamID,
   },
+  pollDuration: 10000,
   defer: true,
   updateSubs: computed(() => {
     if (props.editingTeamID) {
@@ -286,6 +283,17 @@ const teamDetails = useGQLQuery<GetTeamQuery, GetTeamQueryVariables, "">({
     } else return []
   }),
 })
+
+watch(
+  () => props.show,
+  (show) => {
+    if (!show) {
+      teamDetails.pause()
+    } else {
+      teamDetails.unpause()
+    }
+  }
+)
 
 const roleUpdates = ref<
   {
@@ -355,23 +363,28 @@ const membersList = computed(() => {
   return []
 })
 
-const removeExistingTeamMember = async (userID: string) => {
+const isLoadingIndex = ref<null | number>(null)
+
+const removeExistingTeamMember = async (userID: string, index: number) => {
+  isLoadingIndex.value = index
   const removeTeamMemberResult = await removeTeamMember(
     userID,
     props.editingTeamID
   )()
   if (E.isLeft(removeTeamMemberResult)) {
-    $toast.error(t("error.something_went_wrong"), {
-      icon: "error",
-    })
+    toast.error(`${t("error.something_went_wrong")}`)
   } else {
-    $toast.success(t("team.member_removed"), {
-      icon: "done",
-    })
+    toast.success(`${t("team.member_removed")}`)
+    emit("refetch-teams")
+    teamDetails.execute({ teamID: props.editingTeamID })
   }
+  isLoadingIndex.value = null
 }
 
+const isLoading = ref(false)
+
 const saveTeam = async () => {
+  isLoading.value = true
   if (name.value !== "") {
     if (TeamNameCodec.is(name.value)) {
       const updateTeamNameResult = await renameTeam(
@@ -379,9 +392,7 @@ const saveTeam = async () => {
         name.value
       )()
       if (E.isLeft(updateTeamNameResult)) {
-        $toast.error(t("error.something_went_wrong"), {
-          icon: "error",
-        })
+        toast.error(`${t("error.something_went_wrong")}`)
       } else {
         roleUpdates.value.forEach(async (update) => {
           const updateMemberRoleResult = await updateTeamMemberRole(
@@ -390,27 +401,20 @@ const saveTeam = async () => {
             update.role
           )()
           if (E.isLeft(updateMemberRoleResult)) {
-            $toast.error(t("error.something_went_wrong"), {
-              icon: "error",
-            })
+            toast.error(`${t("error.something_went_wrong")}`)
             console.error(updateMemberRoleResult.left.error)
           }
         })
       }
       hideModal()
-      $toast.success(t("team.saved"), {
-        icon: "done",
-      })
+      toast.success(`${t("team.saved")}`)
     } else {
-      return $toast.error(t("team.name_length_insufficient"), {
-        icon: "error_outline",
-      })
+      toast.error(`${t("team.name_length_insufficient")}`)
     }
   } else {
-    return $toast.error(t("empty.team_name"), {
-      icon: "error_outline",
-    })
+    toast.error(`${t("empty.team_name")}`)
   }
+  isLoading.value = false
 }
 
 const hideModal = () => {

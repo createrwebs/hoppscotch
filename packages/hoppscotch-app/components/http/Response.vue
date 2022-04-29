@@ -1,16 +1,16 @@
 <template>
-  <AppSection label="response">
+  <div class="flex flex-col flex-1">
     <HttpResponseMeta :response="response" />
     <LensesResponseBodyRenderer
       v-if="!loading && hasResponse"
       :response="response"
     />
-  </AppSection>
+  </div>
 </template>
 
 <script lang="ts">
-import { computed, defineComponent } from "@nuxtjs/composition-api"
-import { useReadonlyStream } from "~/helpers/utils/composables"
+import { computed, defineComponent, watch } from "@nuxtjs/composition-api"
+import { useNuxt, useReadonlyStream } from "~/helpers/utils/composables"
 import { restResponse$ } from "~/newstore/RESTSession"
 
 export default defineComponent({
@@ -25,6 +25,13 @@ export default defineComponent({
     const loading = computed(
       () => response.value === null || response.value.type === "loading"
     )
+
+    const nuxt = useNuxt()
+
+    watch(response, () => {
+      if (response.value?.type === "loading") nuxt.value.$loading.start()
+      else nuxt.value.$loading.finish()
+    })
 
     return {
       hasResponse,

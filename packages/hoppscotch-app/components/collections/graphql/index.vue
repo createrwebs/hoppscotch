@@ -1,17 +1,7 @@
 <template>
-  <AppSection
-    label="collections"
-    :class="{ 'rounded border border-divider': savingMode }"
-  >
+  <div :class="{ 'rounded border border-divider': savingMode }">
     <div
-      class="
-        divide-y divide-dividerLight
-        border-b border-dividerLight
-        flex flex-col
-        top-0
-        z-10
-        sticky
-      "
+      class="sticky top-0 z-10 flex flex-col border-b divide-dividerLight divide-y border-dividerLight"
       :class="{ 'bg-primary': !savingMode }"
     >
       <input
@@ -20,9 +10,9 @@
         type="search"
         autocomplete="off"
         :placeholder="$t('action.search')"
-        class="bg-transparent flex w-full py-2 px-4"
+        class="flex px-4 py-2 bg-transparent"
       />
-      <div class="flex flex-1 justify-between">
+      <div class="flex justify-between flex-1">
         <ButtonSecondary
           svg="plus"
           :label="$t('action.new')"
@@ -59,6 +49,7 @@
         :is-filtered="filterText.length > 0"
         :saving-mode="savingMode"
         @edit-collection="editCollection(collection, index)"
+        @add-request="addRequest($event)"
         @add-folder="addFolder($event)"
         @edit-folder="editFolder($event)"
         @edit-request="editRequest($event)"
@@ -69,15 +60,15 @@
     </div>
     <div
       v-if="collections.length === 0"
-      class="flex flex-col text-secondaryLight p-4 items-center justify-center"
+      class="flex flex-col items-center justify-center p-4 text-secondaryLight"
     >
       <img
         :src="`/images/states/${$colorMode.value}/pack.svg`"
         loading="lazy"
-        class="flex-col my-4 object-contain object-center h-16 w-16 inline-flex"
+        class="inline-flex flex-col object-contain object-center w-16 h-16 my-4"
         :alt="$t('empty.collections')"
       />
-      <span class="text-center pb-4">
+      <span class="pb-4 text-center">
         {{ $t("empty.collections") }}
       </span>
       <ButtonSecondary
@@ -88,10 +79,10 @@
     </div>
     <div
       v-if="!(filteredCollections.length !== 0 || collections.length === 0)"
-      class="flex flex-col text-secondaryLight p-4 items-center justify-center"
+      class="flex flex-col items-center justify-center p-4 text-secondaryLight"
     >
-      <i class="opacity-75 pb-2 material-icons">manage_search</i>
-      <span class="text-center">
+      <i class="pb-2 opacity-75 material-icons">manage_search</i>
+      <span class="my-2 text-center">
         {{ $t("state.nothing_found") }} "{{ filterText }}"
       </span>
     </div>
@@ -103,7 +94,14 @@
       :show="showModalEdit"
       :editing-collection="editingCollection"
       :editing-collection-index="editingCollectionIndex"
+      :editing-collection-name="editingCollection ? editingCollection.name : ''"
       @hide-modal="displayModalEdit(false)"
+    />
+    <CollectionsGraphqlAddRequest
+      :show="showModalAddRequest"
+      :folder-path="editingFolderPath"
+      @add-request="onAddRequest($event)"
+      @hide-modal="displayModalAddRequest(false)"
     />
     <CollectionsGraphqlAddFolder
       :show="showModalAddFolder"
@@ -117,6 +115,7 @@
       :folder="editingFolder"
       :folder-index="editingFolderIndex"
       :folder-path="editingFolderPath"
+      :editing-folder-name="editingFolder ? editingFolder.name : ''"
       @hide-modal="displayModalEditFolder(false)"
     />
     <CollectionsGraphqlEditRequest
@@ -124,17 +123,19 @@
       :folder-path="editingFolderPath"
       :request="editingRequest"
       :request-index="editingRequestIndex"
+      :editing-request-name="editingRequest ? editingRequest.name : ''"
       @hide-modal="displayModalEditRequest(false)"
     />
     <CollectionsGraphqlImportExport
       :show="showModalImportExport"
       @hide-modal="displayModalImportExport(false)"
     />
-  </AppSection>
+  </div>
 </template>
 
 <script>
 import { defineComponent } from "@nuxtjs/composition-api"
+import cloneDeep from "lodash/cloneDeep"
 import clone from "lodash/clone"
 import { useReadonlyStream } from "~/helpers/utils/composables"
 import {
@@ -142,6 +143,7 @@ import {
   addGraphqlFolder,
   saveGraphqlRequestAs,
 } from "~/newstore/collections"
+import { getGQLSession, setGQLSession } from "~/newstore/GQLSession"
 
 export default defineComponent({
   props: {
@@ -162,6 +164,7 @@ export default defineComponent({
       showModalAdd: false,
       showModalEdit: false,
       showModalImportExport: false,
+      showModalAddRequest: false,
       showModalAddFolder: false,
       showModalEditFolder: false,
       showModalEditRequest: false,
@@ -228,6 +231,11 @@ export default defineComponent({
     displayModalImportExport(shouldDisplay) {
       this.showModalImportExport = shouldDisplay
     },
+    displayModalAddRequest(shouldDisplay) {
+      this.showModalAddRequest = shouldDisplay
+
+      if (!shouldDisplay) this.resetSelectedData()
+    },
     displayModalAddFolder(shouldDisplay) {
       this.showModalAddFolder = shouldDisplay
 
@@ -247,6 +255,26 @@ export default defineComponent({
       this.$data.editingCollection = collection
       this.$data.editingCollectionIndex = collectionIndex
       this.displayModalEdit(true)
+    },
+    onAddRequest({ name, path }) {
+      const newRequest = {
+        ...getGQLSession().request,
+        name,
+      }
+
+      saveGraphqlRequestAs(path, newRequest)
+      setGQLSession({
+        request: newRequest,
+        schema: "",
+        response: "",
+      })
+
+      this.displayModalAddRequest(false)
+    },
+    addRequest(payload) {
+      const { path } = payload
+      this.$data.editingFolderPath = path
+      this.displayModalAddRequest(true)
     },
     onAddFolder({ name, path }) {
       addGraphqlFolder(name, path)

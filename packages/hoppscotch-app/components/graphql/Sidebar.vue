@@ -1,259 +1,222 @@
 <template>
-  <SmartTabs styles="sticky bg-primary z-10 top-0" vertical>
-    <SmartTab
-      :id="'history'"
-      icon="clock"
-      :label="`${$t('tab.history')}`"
-      :selected="true"
-    >
+  <SmartTabs
+    v-model="selectedNavigationTab"
+    styles="sticky bg-primary z-10 top-0"
+    vertical
+  >
+    <SmartTab :id="'history'" icon="clock" :label="`${t('tab.history')}`">
       <History
         ref="graphqlHistoryComponent"
         :page="'graphql'"
         @useHistory="handleUseHistory"
       />
     </SmartTab>
-
     <SmartTab
       :id="'collections'"
       icon="folder"
-      :label="`${$t('tab.collections')}`"
+      :label="`${t('tab.collections')}`"
     >
       <CollectionsGraphql />
     </SmartTab>
-
     <SmartTab
       :id="'docs'"
       icon="book-open"
-      :label="`${$t('tab.documentation')}`"
+      :label="`${t('tab.documentation')}`"
     >
-      <AppSection label="docs">
-        <div
-          v-if="
-            queryFields.length === 0 &&
-            mutationFields.length === 0 &&
-            subscriptionFields.length === 0 &&
-            graphqlTypes.length === 0
-          "
-          class="
-            flex flex-col
-            text-secondaryLight
-            p-4
-            items-center
-            justify-center
-          "
-        >
-          <img
-            :src="`/images/states/${$colorMode.value}/add_comment.svg`"
-            loading="lazy"
-            class="
-              flex-col
-              my-4
-              object-contain object-center
-              h-16
-              w-16
-              inline-flex
-            "
-            :alt="$t('empty.documentation')"
+      <div
+        v-if="
+          queryFields.length === 0 &&
+          mutationFields.length === 0 &&
+          subscriptionFields.length === 0 &&
+          graphqlTypes.length === 0
+        "
+        class="flex flex-col items-center justify-center p-4 text-secondaryLight"
+      >
+        <img
+          :src="`/images/states/${$colorMode.value}/add_comment.svg`"
+          loading="lazy"
+          class="inline-flex flex-col object-contain object-center w-16 h-16 my-4"
+          :alt="`${t('empty.documentation')}`"
+        />
+        <span class="mb-4 text-center">
+          {{ t("empty.documentation") }}
+        </span>
+      </div>
+      <div v-else>
+        <div class="sticky top-0 z-10 flex bg-primary">
+          <input
+            v-model="graphqlFieldsFilterText"
+            type="search"
+            autocomplete="off"
+            :placeholder="`${t('action.search')}`"
+            class="flex flex-1 p-4 py-2 bg-transparent"
           />
-          <span class="text-center mb-4">
-            {{ $t("empty.documentation") }}
-          </span>
-        </div>
-        <div v-else>
-          <div class="bg-primary flex top-0 z-10 sticky">
-            <input
-              v-model="graphqlFieldsFilterText"
-              type="search"
-              autocomplete="off"
-              :placeholder="`${$t('action.search')}`"
-              class="bg-transparent flex w-full p-4 py-2"
-            />
-            <div class="flex">
-              <ButtonSecondary
-                v-tippy="{ theme: 'tooltip' }"
-                to="https://docs.hoppscotch.io/quickstart/graphql"
-                blank
-                :title="$t('app.wiki')"
-                svg="help-circle"
-              />
-            </div>
-          </div>
-          <SmartTabs
-            ref="gqlTabs"
-            styles="border-t border-b border-dividerLight bg-primary sticky z-10 top-sidebarPrimaryStickyFold"
-          >
-            <div class="gqlTabs">
-              <SmartTab
-                v-if="queryFields.length > 0"
-                :id="'queries'"
-                :label="`${$t('tab.queries')}`"
-                :selected="true"
-                class="divide-y divide-dividerLight"
-              >
-                <GraphqlField
-                  v-for="(field, index) in filteredQueryFields"
-                  :key="`field-${index}`"
-                  :gql-field="field"
-                  :jump-type-callback="handleJumpToType"
-                  class="p-4"
-                />
-              </SmartTab>
-              <SmartTab
-                v-if="mutationFields.length > 0"
-                :id="'mutations'"
-                :label="`${$t('graphql.mutations')}`"
-                class="divide-y divide-dividerLight"
-              >
-                <GraphqlField
-                  v-for="(field, index) in filteredMutationFields"
-                  :key="`field-${index}`"
-                  :gql-field="field"
-                  :jump-type-callback="handleJumpToType"
-                  class="p-4"
-                />
-              </SmartTab>
-              <SmartTab
-                v-if="subscriptionFields.length > 0"
-                :id="'subscriptions'"
-                :label="`${$t('graphql.subscriptions')}`"
-                class="divide-y divide-dividerLight"
-              >
-                <GraphqlField
-                  v-for="(field, index) in filteredSubscriptionFields"
-                  :key="`field-${index}`"
-                  :gql-field="field"
-                  :jump-type-callback="handleJumpToType"
-                  class="p-4"
-                />
-              </SmartTab>
-              <SmartTab
-                v-if="graphqlTypes.length > 0"
-                :id="'types'"
-                ref="typesTab"
-                :label="`${$t('tab.types')}`"
-                class="divide-y divide-dividerLight"
-              >
-                <GraphqlType
-                  v-for="(type, index) in filteredGraphqlTypes"
-                  :key="`type-${index}`"
-                  :gql-type="type"
-                  :gql-types="graphqlTypes"
-                  :is-highlighted="isGqlTypeHighlighted(type)"
-                  :highlighted-fields="getGqlTypeHighlightedFields(type)"
-                  :jump-type-callback="handleJumpToType"
-                />
-              </SmartTab>
-            </div>
-          </SmartTabs>
-        </div>
-      </AppSection>
-    </SmartTab>
-
-    <SmartTab :id="'schema'" icon="box" :label="`${$t('tab.schema')}`">
-      <AppSection ref="schema" label="schema">
-        <div
-          v-if="schemaString"
-          class="
-            bg-primary
-            flex flex-1
-            top-0
-            pl-4
-            z-10
-            sticky
-            items-center
-            justify-between
-            border-b border-dividerLight
-          "
-        >
-          <label class="font-semibold text-secondaryLight">
-            {{ $t("graphql.schema") }}
-          </label>
           <div class="flex">
             <ButtonSecondary
               v-tippy="{ theme: 'tooltip' }"
               to="https://docs.hoppscotch.io/quickstart/graphql"
               blank
-              :title="$t('app.wiki')"
+              :title="t('app.wiki')"
               svg="help-circle"
-            />
-            <ButtonSecondary
-              v-tippy="{ theme: 'tooltip' }"
-              :title="$t('state.linewrap')"
-              :class="{ '!text-accent': linewrapEnabled }"
-              svg="corner-down-left"
-              @click.native.prevent="linewrapEnabled = !linewrapEnabled"
-            />
-            <ButtonSecondary
-              ref="downloadSchema"
-              v-tippy="{ theme: 'tooltip' }"
-              :title="$t('action.download_file')"
-              :svg="downloadSchemaIcon"
-              @click.native="downloadSchema"
-            />
-            <ButtonSecondary
-              ref="copySchemaCode"
-              v-tippy="{ theme: 'tooltip' }"
-              :title="$t('action.copy')"
-              :svg="copySchemaIcon"
-              @click.native="copySchema"
             />
           </div>
         </div>
-        <div v-if="schemaString" ref="schemaEditor"></div>
-        <div
-          v-else
-          class="
-            flex flex-col
-            text-secondaryLight
-            p-4
-            items-center
-            justify-center
-          "
+        <SmartTabs
+          v-model="selectedGqlTab"
+          styles="border-t border-b border-dividerLight bg-primary sticky z-10 top-sidebarPrimaryStickyFold"
         >
-          <img
-            :src="`/images/states/${$colorMode.value}/blockchain.svg`"
-            loading="lazy"
-            class="
-              flex-col
-              my-4
-              object-contain object-center
-              h-16
-              w-16
-              inline-flex
-            "
-            :alt="$t('empty.schema')"
+          <SmartTab
+            v-if="queryFields.length > 0"
+            :id="'queries'"
+            :label="`${t('tab.queries')}`"
+            class="divide-y divide-dividerLight"
+          >
+            <GraphqlField
+              v-for="(field, index) in filteredQueryFields"
+              :key="`field-${index}`"
+              :gql-field="field"
+              :jump-type-callback="handleJumpToType"
+              class="p-4"
+            />
+          </SmartTab>
+          <SmartTab
+            v-if="mutationFields.length > 0"
+            :id="'mutations'"
+            :label="`${t('graphql.mutations')}`"
+            class="divide-y divide-dividerLight"
+          >
+            <GraphqlField
+              v-for="(field, index) in filteredMutationFields"
+              :key="`field-${index}`"
+              :gql-field="field"
+              :jump-type-callback="handleJumpToType"
+              class="p-4"
+            />
+          </SmartTab>
+          <SmartTab
+            v-if="subscriptionFields.length > 0"
+            :id="'subscriptions'"
+            :label="`${t('graphql.subscriptions')}`"
+            class="divide-y divide-dividerLight"
+          >
+            <GraphqlField
+              v-for="(field, index) in filteredSubscriptionFields"
+              :key="`field-${index}`"
+              :gql-field="field"
+              :jump-type-callback="handleJumpToType"
+              class="p-4"
+            />
+          </SmartTab>
+          <SmartTab
+            v-if="graphqlTypes.length > 0"
+            :id="'types'"
+            :label="`${t('tab.types')}`"
+            class="divide-y divide-dividerLight"
+          >
+            <GraphqlType
+              v-for="(type, index) in filteredGraphqlTypes"
+              :key="`type-${index}`"
+              :gql-type="type"
+              :gql-types="graphqlTypes"
+              :is-highlighted="isGqlTypeHighlighted(type)"
+              :highlighted-fields="getGqlTypeHighlightedFields(type)"
+              :jump-type-callback="handleJumpToType"
+            />
+          </SmartTab>
+        </SmartTabs>
+      </div>
+    </SmartTab>
+    <SmartTab :id="'schema'" icon="box" :label="`${t('tab.schema')}`">
+      <div
+        v-if="schemaString"
+        class="sticky top-0 z-10 flex items-center justify-between pl-4 border-b bg-primary border-dividerLight"
+      >
+        <label class="font-semibold text-secondaryLight">
+          {{ t("graphql.schema") }}
+        </label>
+        <div class="flex">
+          <ButtonSecondary
+            v-tippy="{ theme: 'tooltip' }"
+            to="https://docs.hoppscotch.io/quickstart/graphql"
+            blank
+            :title="t('app.wiki')"
+            svg="help-circle"
           />
-          <span class="text-center mb-4">
-            {{ $t("empty.schema") }}
-          </span>
+          <ButtonSecondary
+            v-tippy="{ theme: 'tooltip' }"
+            :title="t('state.linewrap')"
+            :class="{ '!text-accent': linewrapEnabled }"
+            svg="wrap-text"
+            @click.native.prevent="linewrapEnabled = !linewrapEnabled"
+          />
+          <ButtonSecondary
+            ref="downloadSchema"
+            v-tippy="{ theme: 'tooltip' }"
+            :title="t('action.download_file')"
+            :svg="downloadSchemaIcon"
+            @click.native="downloadSchema"
+          />
+          <ButtonSecondary
+            ref="copySchemaCode"
+            v-tippy="{ theme: 'tooltip' }"
+            :title="t('action.copy')"
+            :svg="copySchemaIcon"
+            @click.native="copySchema"
+          />
         </div>
-      </AppSection>
+      </div>
+      <div
+        v-if="schemaString"
+        ref="schemaEditor"
+        class="flex flex-col flex-1"
+      ></div>
+      <div
+        v-else
+        class="flex flex-col items-center justify-center p-4 text-secondaryLight"
+      >
+        <img
+          :src="`/images/states/${$colorMode.value}/blockchain.svg`"
+          loading="lazy"
+          class="inline-flex flex-col object-contain object-center w-16 h-16 my-4"
+          :alt="`${t('empty.schema')}`"
+        />
+        <span class="mb-4 text-center">
+          {{ t("empty.schema") }}
+        </span>
+      </div>
     </SmartTab>
   </SmartTabs>
 </template>
 
 <script setup lang="ts">
-import {
-  computed,
-  nextTick,
-  reactive,
-  ref,
-  useContext,
-} from "@nuxtjs/composition-api"
+import { computed, nextTick, reactive, ref } from "@nuxtjs/composition-api"
 import { GraphQLField, GraphQLType } from "graphql"
 import { map } from "rxjs/operators"
+import { GQLHeader } from "@hoppscotch/data"
 import { useCodemirror } from "~/helpers/editor/codemirror"
 import { GQLConnection } from "~/helpers/GQLConnection"
-import { GQLHeader } from "~/helpers/types/HoppGQLRequest"
 import { copyToClipboard } from "~/helpers/utils/clipboard"
-import { useReadonlyStream } from "~/helpers/utils/composables"
 import {
+  useReadonlyStream,
+  useI18n,
+  useToast,
+} from "~/helpers/utils/composables"
+import {
+  setGQLAuth,
   setGQLHeaders,
   setGQLQuery,
   setGQLResponse,
   setGQLURL,
   setGQLVariables,
 } from "~/newstore/GQLSession"
+
+type NavigationTabs = "history" | "collection" | "docs" | "schema"
+type GqlTabs = "queries" | "mutations" | "subscriptions" | "types"
+
+const selectedNavigationTab = ref<NavigationTabs>("history")
+const selectedGqlTab = ref<GqlTabs>("queries")
+
+const t = useI18n()
 
 function isTextFoundInGraphqlFieldObject(
   text: string,
@@ -321,11 +284,7 @@ const props = defineProps<{
   conn: GQLConnection
 }>()
 
-const {
-  $toast,
-  app: { i18n },
-} = useContext()
-const t = i18n.t.bind(i18n)
+const toast = useToast()
 
 const queryFields = useReadonlyStream(
   props.conn.queryFields$.pipe(map((x) => x ?? [])),
@@ -351,9 +310,6 @@ const downloadSchemaIcon = ref("download")
 const copySchemaIcon = ref("copy")
 
 const graphqlFieldsFilterText = ref("")
-
-const gqlTabs = ref<any | null>(null)
-const typesTab = ref<any | null>(null)
 
 const filteredQueryFields = computed(() => {
   return getFilteredGraphqlFields(
@@ -404,16 +360,29 @@ const getGqlTypeHighlightedFields = (gqlType: GraphQLType) => {
 }
 
 const handleJumpToType = async (type: GraphQLType) => {
-  gqlTabs.value.selectTab(typesTab.value)
+  selectedGqlTab.value = "types"
   await nextTick()
 
   const rootTypeName = resolveRootType(type).name
-
   const target = document.getElementById(`type_${rootTypeName}`)
   if (target) {
-    gqlTabs.value.$el
-      .querySelector(".gqlTabs")
-      .scrollTo({ top: target.offsetTop, behavior: "smooth" })
+    target.scrollIntoView({ block: "center", behavior: "smooth" })
+    target.classList.add(
+      "transition-all",
+      "ring-inset",
+      "ring-accentLight",
+      "ring-4"
+    )
+    setTimeout(
+      () =>
+        target.classList.remove(
+          "ring-inset",
+          "ring-accentLight",
+          "ring-4",
+          "transition-all"
+        ),
+      2000
+    )
   }
 }
 
@@ -436,6 +405,7 @@ useCodemirror(
     },
     linter: null,
     completer: null,
+    environmentHighlights: false,
   })
 )
 
@@ -449,9 +419,7 @@ const downloadSchema = () => {
   document.body.appendChild(a)
   a.click()
   downloadSchemaIcon.value = "check"
-  $toast.success(`${t("state.download_started")}`, {
-    icon: "downloading",
-  })
+  toast.success(`${t("state.download_started")}`)
   setTimeout(() => {
     document.body.removeChild(a)
     URL.revokeObjectURL(url)
@@ -479,6 +447,10 @@ const handleUseHistory = (entry: GQLHistoryEntry) => {
   setGQLQuery(gqlQueryString)
   setGQLVariables(variableString)
   setGQLResponse(responseText)
+  setGQLAuth({
+    authType: "none",
+    authActive: true,
+  })
   props.conn.reset()
 }
 </script>

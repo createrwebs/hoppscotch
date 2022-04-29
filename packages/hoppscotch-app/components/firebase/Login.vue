@@ -1,13 +1,13 @@
 <template>
   <SmartModal
     v-if="show"
+    dialog
     :title="`${$t('auth.login_to_hoppscotch')}`"
     max-width="sm:max-w-md"
-    dialog
     @close="hideModal"
   >
     <template #body>
-      <div v-if="mode === 'sign-in'" class="flex flex-col space-y-2 px-2">
+      <div v-if="mode === 'sign-in'" class="flex flex-col px-2 space-y-2">
         <SmartItem
           :loading="signingInWithGitHub"
           svg="auth/github"
@@ -21,7 +21,13 @@
           @click.native="signInWithGoogle"
         />
         <SmartItem
-          icon="mail"
+          :loading="signingInWithMicrosoft"
+          svg="auth/microsoft"
+          :label="`${$t('auth.continue_with_microsoft')}`"
+          @click.native="signInWithMicrosoft"
+        />
+        <SmartItem
+          svg="auth/email"
           :label="`${$t('auth.continue_with_email')}`"
           @click.native="mode = 'email'"
         />
@@ -56,9 +62,9 @@
         />
       </form>
       <div v-if="mode === 'email-sent'" class="flex flex-col px-4">
-        <div class="flex flex-col max-w-md justify-center items-center">
-          <SmartIcon class="h-6 text-accent w-6" name="inbox" />
-          <h3 class="my-2 text-center text-lg">
+        <div class="flex flex-col items-center justify-center max-w-md">
+          <SmartIcon class="w-6 h-6 text-accent" name="inbox" />
+          <h3 class="my-2 text-lg text-center">
             {{ $t("auth.we_sent_magic_link") }}
           </h3>
           <p class="text-center">
@@ -95,7 +101,7 @@
       </p>
       <p
         v-if="mode === 'email-sent'"
-        class="flex flex-1 text-secondaryLight justify-between"
+        class="flex justify-between flex-1 text-secondaryLight"
       >
         <SmartAnchor
           class="link"
@@ -117,6 +123,7 @@ import { defineComponent } from "@nuxtjs/composition-api"
 import {
   signInUserWithGoogle,
   signInUserWithGithub,
+  signInUserWithMicrosoft,
   setProviderInfo,
   currentUser$,
   signInWithEmail,
@@ -144,6 +151,7 @@ export default defineComponent({
       },
       signingInWithGoogle: false,
       signingInWithGitHub: false,
+      signingInWithMicrosoft: false,
       signingInWithEmail: false,
       mode: "sign-in",
     }
@@ -155,9 +163,7 @@ export default defineComponent({
   },
   methods: {
     showLoginSuccess() {
-      this.$toast.success(`${this.$t("auth.login_success")}`, {
-        icon: "vpn_key",
-      })
+      this.$toast.success(`${this.$t("auth.login_success")}`)
     },
     async signInWithGoogle() {
       this.signingInWithGoogle = true
@@ -174,7 +180,6 @@ export default defineComponent({
           // The pending Google credential.
           const pendingCred = e.credential
           this.$toast.info(`${this.$t("auth.account_exists")}`, {
-            icon: "vpn_key",
             duration: 0,
             closeOnSwipe: false,
             action: {
@@ -190,9 +195,7 @@ export default defineComponent({
             },
           })
         } else {
-          this.$toast.error(`${this.$t("error.something_went_wrong")}`, {
-            icon: "error_outline",
-          })
+          this.$toast.error(`${this.$t("error.something_went_wrong")}`)
         }
       }
 
@@ -218,7 +221,6 @@ export default defineComponent({
           // The pending Google credential.
           const pendingCred = e.credential
           this.$toast.info(`${this.$t("auth.account_exists")}`, {
-            icon: "vpn_key",
             duration: 0,
             closeOnSwipe: false,
             action: {
@@ -234,13 +236,47 @@ export default defineComponent({
             },
           })
         } else {
-          this.$toast.error(`${this.$t("error.something_went_wrong")}`, {
-            icon: "error_outline",
-          })
+          this.$toast.error(`${this.$t("error.something_went_wrong")}`)
         }
       }
 
       this.signingInWithGitHub = false
+    },
+    async signInWithMicrosoft() {
+      this.signingInWithMicrosoft = true
+
+      try {
+        await signInUserWithMicrosoft()
+        this.showLoginSuccess()
+      } catch (e) {
+        console.error(e)
+        // An error happened.
+        if (e.code === "auth/account-exists-with-different-credential") {
+          // Step 2.
+          // User's email already exists.
+          // The pending Microsoft credential.
+          const pendingCred = e.credential
+          this.$toast.info(`${this.$t("auth.account_exists")}`, {
+            duration: 0,
+            closeOnSwipe: false,
+            action: {
+              text: `${this.$t("action.yes")}`,
+              onClick: async (_, toastObject) => {
+                const { user } = await signInUserWithGithub()
+                await linkWithFBCredential(user, pendingCred)
+
+                this.showLoginSuccess()
+
+                toastObject.goAway(0)
+              },
+            },
+          })
+        } else {
+          this.$toast.error(`${this.$t("error.something_went_wrong")}`)
+        }
+      }
+
+      this.signingInWithMicrosoft = false
     },
     async signInWithEmail() {
       this.signingInWithEmail = true
@@ -256,9 +292,7 @@ export default defineComponent({
         })
         .catch((e) => {
           console.error(e)
-          this.$toast.error(e.message, {
-            icon: "error_outline",
-          })
+          this.$toast.error(e.message)
           this.signingInWithEmail = false
         })
         .finally(() => {

@@ -1,12 +1,13 @@
 <template>
   <SmartModal
     v-if="show"
-    :title="`${$t('collection.save_as')}`"
+    dialog
+    :title="`${t('collection.save_as')}`"
     @close="hideModal"
   >
     <template #body>
       <div class="flex flex-col px-2">
-        <div class="flex relative">
+        <div class="relative flex">
           <input
             id="selectLabelSaveReq"
             v-model="requestName"
@@ -18,11 +19,11 @@
             @keyup.enter="saveRequestAs"
           />
           <label for="selectLabelSaveReq">
-            {{ $t("request.name") }}
+            {{ t("request.name") }}
           </label>
         </div>
         <label class="p-4">
-          {{ $t("collection.select_location") }}
+          {{ t("collection.select_location") }}
         </label>
         <CollectionsGraphql
           v-if="mode === 'graphql'"
@@ -45,11 +46,11 @@
     <template #footer>
       <span>
         <ButtonPrimary
-          :label="`${$t('action.save')}`"
+          :label="`${t('action.save')}`"
           @click.native="saveRequestAs"
         />
         <ButtonSecondary
-          :label="`${$t('action.cancel')}`"
+          :label="`${t('action.cancel')}`"
           @click.native="hideModal"
         />
       </span>
@@ -58,8 +59,10 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, ref, useContext, watch } from "@nuxtjs/composition-api"
-import { isHoppRESTRequest } from "~/helpers/types/HoppRESTRequest"
+import { reactive, ref, watch } from "@nuxtjs/composition-api"
+import * as E from "fp-ts/Either"
+import { HoppGQLRequest, isHoppRESTRequest } from "@hoppscotch/data"
+import cloneDeep from "lodash/cloneDeep"
 import {
   editGraphqlRequest,
   editRESTRequest,
@@ -72,9 +75,14 @@ import {
   setRESTSaveContext,
   useRESTRequestName,
 } from "~/newstore/RESTSession"
-import * as teamUtils from "~/helpers/teams/utils"
-import { apolloClient } from "~/helpers/apollo"
-import { HoppGQLRequest } from "~/helpers/types/HoppGQLRequest"
+import { useI18n, useToast } from "~/helpers/utils/composables"
+import { runMutation } from "~/helpers/backend/GQLClient"
+import {
+  CreateRequestInCollectionDocument,
+  UpdateRequestDocument,
+} from "~/helpers/backend/graphql"
+
+const t = useI18n()
 
 type CollectionType =
   | {
@@ -137,12 +145,7 @@ const emit = defineEmits<{
   (e: "hide-modal"): void
 }>()
 
-const {
-  $toast,
-  app: { i18n },
-} = useContext()
-
-const t = i18n.t.bind(i18n)
+const toast = useToast()
 
 // TODO: Use a better implementation with computed ?
 // This implementation can't work across updates to mode prop (which won't happen tho)
@@ -194,20 +197,20 @@ const hideModal = () => {
 
 const saveRequestAs = async () => {
   if (!requestName.value) {
-    $toast.error(`${t("error.empty_req_name")}`, {
-      icon: "error_outline",
-    })
+    toast.error(`${t("error.empty_req_name")}`)
     return
   }
   if (picked.value === null) {
-    $toast.error(`${t("collection.select")}`, {
-      icon: "error_outline",
-    })
+    toast.error(`${t("collection.select")}`)
     return
   }
 
+  // Clone Deep because objects are shared by reference so updating
+  // just one bit will update other referenced shared instances
   const requestUpdated =
-    props.mode === "rest" ? getRESTRequest() : getGQLSession().request
+    props.mode === "rest"
+      ? cloneDeep(getRESTRequest())
+      : cloneDeep(getGQLSession().request)
 
   // // Filter out all REST file inputs
   // if (this.mode === "rest" && requestUpdated.bodyParams) {
@@ -272,22 +275,20 @@ const saveRequestAs = async () => {
     if (collectionsType.value.type !== "team-collections")
       throw new Error("Collections Type mismatch")
 
-    teamUtils
-      .overwriteRequestTeams(
-        apolloClient,
-        JSON.stringify(requestUpdated),
-        requestUpdated.name,
-        picked.value.requestID
-      )
-      .then(() => {
+    runMutation(UpdateRequestDocument, {
+      requestID: picked.value.requestID,
+      data: {
+        request: JSON.stringify(requestUpdated),
+        title: requestUpdated.name,
+      },
+    })().then((result) => {
+      if (E.isLeft(result)) {
+        toast.error(`${t("profile.no_permission")}`)
+        throw new Error(`${result.left}`)
+      } else {
         requestSaved()
-      })
-      .catch((error) => {
-        $toast.error(t("profile.no_permission").toString(), {
-          icon: "error_outline",
-        })
-        throw new Error(error)
-      })
+      }
+    })
 
     setRESTSaveContext({
       originLocation: "team-collection",
@@ -300,30 +301,27 @@ const saveRequestAs = async () => {
     if (collectionsType.value.type !== "team-collections")
       throw new Error("Collections Type mismatch")
 
-    try {
-      const req = await teamUtils.saveRequestAsTeams(
-        apolloClient,
-        JSON.stringify(requestUpdated),
-        requestUpdated.name,
-        collectionsType.value.selectedTeam.id,
-        picked.value.folderID
-      )
+    const result = await runMutation(CreateRequestInCollectionDocument, {
+      collectionID: picked.value.folderID,
+      data: {
+        request: JSON.stringify(requestUpdated),
+        teamID: collectionsType.value.selectedTeam.id,
+        title: requestUpdated.name,
+      },
+    })()
 
-      if (req && req.id) {
-        setRESTSaveContext({
-          originLocation: "team-collection",
-          requestID: req.id,
-          teamID: collectionsType.value.selectedTeam.id,
-          collectionID: picked.value.folderID,
-        })
-      }
+    if (E.isLeft(result)) {
+      toast.error(`${t("profile.no_permission")}`)
+      console.error(result.left)
+    } else {
+      setRESTSaveContext({
+        originLocation: "team-collection",
+        requestID: result.right.createRequestInCollection.id,
+        teamID: collectionsType.value.selectedTeam.id,
+        collectionID: picked.value.folderID,
+      })
 
       requestSaved()
-    } catch (error) {
-      $toast.error(t("profile.no_permission").toString(), {
-        icon: "error_outline",
-      })
-      console.error(error)
     }
   } else if (picked.value.pickedType === "teams-collection") {
     if (!isHoppRESTRequest(requestUpdated))
@@ -332,30 +330,27 @@ const saveRequestAs = async () => {
     if (collectionsType.value.type !== "team-collections")
       throw new Error("Collections Type mismatch")
 
-    try {
-      const req = await teamUtils.saveRequestAsTeams(
-        apolloClient,
-        JSON.stringify(requestUpdated),
-        requestUpdated.name,
-        collectionsType.value.selectedTeam.id,
-        picked.value.collectionID
-      )
+    const result = await runMutation(CreateRequestInCollectionDocument, {
+      collectionID: picked.value.collectionID,
+      data: {
+        title: requestUpdated.name,
+        request: JSON.stringify(requestUpdated),
+        teamID: collectionsType.value.selectedTeam.id,
+      },
+    })()
 
-      if (req && req.id) {
-        setRESTSaveContext({
-          originLocation: "team-collection",
-          requestID: req.id,
-          teamID: collectionsType.value.selectedTeam.id,
-          collectionID: picked.value.collectionID,
-        })
-      }
+    if (E.isLeft(result)) {
+      toast.error(`${t("profile.no_permission")}`)
+      console.error(result.left)
+    } else {
+      setRESTSaveContext({
+        originLocation: "team-collection",
+        requestID: result.right.createRequestInCollection.id,
+        teamID: collectionsType.value.selectedTeam.id,
+        collectionID: picked.value.collectionID,
+      })
 
       requestSaved()
-    } catch (error) {
-      $toast.error(t("profile.no_permission").toString(), {
-        icon: "error_outline",
-      })
-      console.error(error)
     }
   } else if (picked.value.pickedType === "gql-my-request") {
     // TODO: Check for GQL request ?
@@ -386,9 +381,7 @@ const saveRequestAs = async () => {
 }
 
 const requestSaved = () => {
-  $toast.success(`${t("request.added")}`, {
-    icon: "post_add",
-  })
+  toast.success(`${t("request.added")}`)
   hideModal()
 }
 

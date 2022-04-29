@@ -1,45 +1,45 @@
 <template>
   <div class="flex flex-col" :class="[{ 'bg-primaryLight': dragging }]">
     <div
-      class="flex items-center group"
+      class="flex items-stretch group"
       @dragover.prevent
       @drop.prevent="dropEvent"
       @dragover="dragging = true"
       @drop="dragging = false"
       @dragleave="dragging = false"
       @dragend="dragging = false"
+      @contextmenu.prevent="options.tippy().show()"
     >
       <span
-        class="cursor-pointer flex px-4 justify-center items-center"
+        class="flex items-center justify-center px-4 cursor-pointer"
         @click="toggleShowChildren()"
       >
         <SmartIcon
           class="svg-icons"
-          :class="{ 'text-green-500': isSelected }"
+          :class="{ 'text-accent': isSelected }"
           :name="getCollectionIcon"
         />
       </span>
       <span
-        class="
-          cursor-pointer
-          flex flex-1
-          min-w-0
-          py-2
-          pr-2
-          transition
-          group-hover:text-secondaryDark
-        "
+        class="flex flex-1 min-w-0 py-2 pr-2 cursor-pointer transition group-hover:text-secondaryDark"
         @click="toggleShowChildren()"
       >
-        <span class="truncate">
+        <span class="truncate" :class="{ 'text-accent': isSelected }">
           {{ folder.name ? folder.name : folder.title }}
         </span>
       </span>
       <div class="flex">
         <ButtonSecondary
           v-tippy="{ theme: 'tooltip' }"
+          svg="file-plus"
+          :title="t('request.new')"
+          class="hidden group-hover:inline-flex"
+          @click.native="$emit('add-request', { path: folderPath })"
+        />
+        <ButtonSecondary
+          v-tippy="{ theme: 'tooltip' }"
           svg="folder-plus"
-          :title="$t('folder.new')"
+          :title="t('folder.new')"
           class="hidden group-hover:inline-flex"
           @click.native="$emit('add-folder', { folder, path: folderPath })"
         />
@@ -50,66 +50,100 @@
             trigger="click"
             theme="popover"
             arrow
+            :on-shown="() => tippyActions.focus()"
           >
             <template #trigger>
               <ButtonSecondary
                 v-tippy="{ theme: 'tooltip' }"
-                :title="$t('action.more')"
+                :title="t('action.more')"
                 svg="more-vertical"
               />
             </template>
-            <SmartItem
-              svg="folder-plus"
-              :label="$t('folder.new')"
-              @click.native="
-                () => {
-                  $emit('add-folder', { folder, path: folderPath })
-                  $refs.options.tippy().hide()
-                }
-              "
-            />
-            <SmartItem
-              svg="edit"
-              :label="$t('action.edit')"
-              @click.native="
-                () => {
-                  $emit('edit-folder', {
-                    folder,
-                    folderIndex,
-                    collectionIndex,
-                    folderPath,
-                  })
-                  $refs.options.tippy().hide()
-                }
-              "
-            />
-            <SmartItem
-              svg="trash-2"
-              color="red"
-              :label="$t('action.delete')"
-              @click.native="
-                () => {
-                  confirmRemove = true
-                  $refs.options.tippy().hide()
-                }
-              "
-            />
+            <div
+              ref="tippyActions"
+              class="flex flex-col focus:outline-none"
+              tabindex="0"
+              role="menu"
+              @keyup.r="requestAction.$el.click()"
+              @keyup.n="folderAction.$el.click()"
+              @keyup.e="edit.$el.click()"
+              @keyup.delete="deleteAction.$el.click()"
+              @keyup.x="exportAction.$el.click()"
+              @keyup.escape="options.tippy().hide()"
+            >
+              <SmartItem
+                ref="requestAction"
+                svg="file-plus"
+                :label="$t('request.new')"
+                :shortcut="['R']"
+                @click.native="
+                  () => {
+                    $emit('add-request', { path: folderPath })
+                    options.tippy().hide()
+                  }
+                "
+              />
+              <SmartItem
+                ref="folderAction"
+                svg="folder-plus"
+                :label="t('folder.new')"
+                :shortcut="['N']"
+                @click.native="
+                  () => {
+                    $emit('add-folder', { folder, path: folderPath })
+                    options.tippy().hide()
+                  }
+                "
+              />
+              <SmartItem
+                ref="edit"
+                svg="edit"
+                :label="t('action.edit')"
+                :shortcut="['E']"
+                @click.native="
+                  () => {
+                    $emit('edit-folder', {
+                      folder,
+                      folderIndex,
+                      collectionIndex,
+                      folderPath,
+                    })
+                    options.tippy().hide()
+                  }
+                "
+              />
+              <SmartItem
+                ref="exportAction"
+                svg="download"
+                :label="$t('export.title')"
+                :shortcut="['X']"
+                @click.native="
+                  () => {
+                    exportFolder()
+                    options.tippy().hide()
+                  }
+                "
+              />
+              <SmartItem
+                ref="deleteAction"
+                svg="trash-2"
+                :label="t('action.delete')"
+                :shortcut="['⌫']"
+                @click.native="
+                  () => {
+                    removeFolder()
+                    options.tippy().hide()
+                  }
+                "
+              />
+            </div>
           </tippy>
         </span>
       </div>
     </div>
     <div v-if="showChildren || isFiltered" class="flex">
       <div
-        class="
-          flex
-          w-1
-          transform
-          transition
-          cursor-nsResize
-          ml-5.5
-          bg-dividerLight
-          hover:scale-x-125 hover:bg-dividerDark
-        "
+        class="bg-dividerLight cursor-nsResize flex ml-5.5 transform transition w-1 hover:bg-dividerDark hover:scale-x-125"
         @click="toggleShowChildren()"
       ></div>
       <div class="flex flex-col flex-1 truncate">
@@ -124,13 +158,15 @@
           :collections-type="collectionsType"
           :folder-path="`${folderPath}/${subFolderIndex}`"
           :picked="picked"
+          @add-request="$emit('add-request', $event)"
           @add-folder="$emit('add-folder', $event)"
           @edit-folder="$emit('edit-folder', $event)"
           @edit-request="$emit('edit-request', $event)"
           @duplicate-request="$emit('duplicate-request', $event)"
           @update-team-collections="$emit('update-team-collections')"
           @select="$emit('select', $event)"
-          @remove-request="removeRequest"
+          @remove-request="$emit('remove-request', $event)"
+          @remove-folder="$emit('remove-folder', $event)"
         />
         <CollectionsMyRequest
           v-for="(request, index) in folder.requests"
@@ -148,7 +184,7 @@
           @edit-request="$emit('edit-request', $event)"
           @duplicate-request="$emit('duplicate-request', $event)"
           @select="$emit('select', $event)"
-          @remove-request="removeRequest"
+          @remove-request="$emit('remove-request', $event)"
         />
         <div
           v-if="
@@ -157,49 +193,27 @@
             folder.requests &&
             folder.requests.length === 0
           "
-          class="
-            flex flex-col
-            text-secondaryLight
-            p-4
-            items-center
-            justify-center
-          "
+          class="flex flex-col items-center justify-center p-4 text-secondaryLight"
         >
           <img
             :src="`/images/states/${$colorMode.value}/pack.svg`"
             loading="lazy"
-            class="
-              flex-col
-              mb-4
-              object-contain object-center
-              h-16
-              w-16
-              inline-flex
-            "
-            :alt="$t('empty.folder')"
+            class="inline-flex flex-col object-contain object-center w-16 h-16 mb-4"
+            :alt="`${t('empty.folder')}`"
           />
           <span class="text-center">
-            {{ $t("empty.folder") }}
+            {{ t("empty.folder") }}
           </span>
         </div>
       </div>
     </div>
-    <SmartConfirmModal
-      :show="confirmRemove"
-      :title="$t('confirm.remove_folder')"
-      @hide-modal="confirmRemove = false"
-      @resolve="removeFolder"
-    />
   </div>
 </template>
 
-<script>
-import { defineComponent } from "@nuxtjs/composition-api"
-import {
-  removeRESTFolder,
-  removeRESTRequest,
-  moveRESTRequest,
-} from "~/newstore/collections"
+<script lang="ts">
+import { defineComponent, ref } from "@nuxtjs/composition-api"
+import { useI18n } from "~/helpers/utils/composables"
+import { moveRESTRequest } from "~/newstore/collections"
 
 export default defineComponent({
   name: "Folder",
@@ -214,17 +228,30 @@ export default defineComponent({
     collectionsType: { type: Object, default: () => {} },
     picked: { type: Object, default: () => {} },
   },
+  setup() {
+    const t = useI18n()
+
+    return {
+      tippyActions: ref<any | null>(null),
+      options: ref<any | null>(null),
+      requestAction: ref<any | null>(null),
+      folderAction: ref<any | null>(null),
+      edit: ref<any | null>(null),
+      deleteAction: ref<any | null>(null),
+      exportAction: ref<any | null>(null),
+      t,
+    }
+  },
   data() {
     return {
       showChildren: false,
       dragging: false,
-      confirmRemove: false,
       prevCursor: "",
       cursor: "",
     }
   },
   computed: {
-    isSelected() {
+    isSelected(): boolean {
       return (
         this.picked &&
         this.picked.pickedType === "my-folder" &&
@@ -234,11 +261,28 @@ export default defineComponent({
     getCollectionIcon() {
       if (this.isSelected) return "check-circle"
       else if (!this.showChildren && !this.isFiltered) return "folder"
-      else if (this.showChildren || this.isFiltered) return "folder-minus"
+      else if (this.showChildren || this.isFiltered) return "folder-open"
       else return "folder"
     },
   },
   methods: {
+    exportFolder() {
+      const folderJSON = JSON.stringify(this.folder)
+
+      const file = new Blob([folderJSON], { type: "application/json" })
+      const a = document.createElement("a")
+      const url = URL.createObjectURL(file)
+      a.href = url
+
+      a.download = `${this.folder.name}.json`
+      document.body.appendChild(a)
+      a.click()
+      this.$toast.success(this.$t("state.download_started").toString())
+      setTimeout(() => {
+        document.body.removeChild(a)
+        URL.revokeObjectURL(url)
+      }, 1000)
+    },
     toggleShowChildren() {
       if (this.$props.saveRequest)
         this.$emit("select", {
@@ -252,18 +296,9 @@ export default defineComponent({
       this.showChildren = !this.showChildren
     },
     removeFolder() {
-      // TODO: Bubble it up ?
-      // Cancel pick if picked folder was deleted
-      if (
-        this.picked &&
-        this.picked.pickedType === "my-folder" &&
-        this.picked.folderPath === this.folderPath
-      ) {
-        this.$emit("select", { picked: null })
-      }
-      removeRESTFolder(this.folderPath)
-      this.$toast.success(this.$t("state.deleted"), {
-        icon: "delete",
+      this.$emit("remove-folder", {
+        folder: this.folder,
+        folderPath: this.folderPath,
       })
     },
     dropEvent({ dataTransfer }) {
@@ -271,19 +306,6 @@ export default defineComponent({
       const folderPath = dataTransfer.getData("folderPath")
       const requestIndex = dataTransfer.getData("requestIndex")
       moveRESTRequest(folderPath, requestIndex, this.folderPath)
-    },
-    removeRequest({ requestIndex }) {
-      // TODO: Bubble it up to root ?
-      // Cancel pick if the picked item is being deleted
-      if (
-        this.picked &&
-        this.picked.pickedType === "my-request" &&
-        this.picked.folderPath === this.folderPath &&
-        this.picked.requestIndex === requestIndex
-      ) {
-        this.$emit("select", { picked: null })
-      }
-      removeRESTRequest(this.folderPath, requestIndex)
     },
   },
 })

@@ -1,8 +1,21 @@
+import * as A from "fp-ts/Array"
+import qs from "qs"
+import { pipe } from "fp-ts/function"
 import { combineLatest, Observable } from "rxjs"
 import { map } from "rxjs/operators"
-import { FormDataKeyValue, HoppRESTRequest } from "../types/HoppRESTRequest"
-import { parseTemplateString, parseBodyEnvVariables } from "../templating"
-import { Environment, getGlobalVariables } from "~/newstore/environments"
+import {
+  FormDataKeyValue,
+  HoppRESTReqBody,
+  HoppRESTRequest,
+  parseTemplateString,
+  parseBodyEnvVariables,
+  parseRawKeyValueEntries,
+  Environment,
+} from "@hoppscotch/data"
+import { arrayFlatMap, arraySort } from "../functional/array"
+import { toFormData } from "../functional/formData"
+import { tupleToRecord } from "../functional/record"
+import { getGlobalVariables } from "~/newstore/environments"
 
 export interface EffectiveHoppRESTRequest extends HoppRESTRequest {
   /**
@@ -16,37 +29,96 @@ export interface EffectiveHoppRESTRequest extends HoppRESTRequest {
   effectiveFinalBody: FormData | string | null
 }
 
+// Resolves environment variables in the body
+export const resolvesEnvsInBody = (
+  body: HoppRESTReqBody,
+  env: Environment
+): HoppRESTReqBody => {
+  if (!body.contentType) return body
+
+  if (body.contentType === "multipart/form-data") {
+    return {
+      contentType: "multipart/form-data",
+      body: body.body.map(
+        (entry) =>
+          <FormDataKeyValue>{
+            active: entry.active,
+            isFile: entry.isFile,
+            key: parseTemplateString(entry.key, env.variables),
+            value: entry.isFile
+              ? entry.value
+              : parseTemplateString(entry.value, env.variables),
+          }
+      ),
+    }
+  } else {
+    return {
+      contentType: body.contentType,
+      body: parseTemplateString(body.body, env.variables),
+    }
+  }
+}
+
 function getFinalBodyFromRequest(
   request: HoppRESTRequest,
-  env: Environment
+  envVariables: Environment["variables"]
 ): FormData | string | null {
   if (request.body.contentType === null) {
     return null
   }
 
+  if (request.body.contentType === "application/x-www-form-urlencoded") {
+    return pipe(
+      request.body.body,
+      parseRawKeyValueEntries,
+
+      // Filter out active
+      A.filter((x) => x.active),
+      // Convert to tuple
+      A.map(
+        ({ key, value }) =>
+          [
+            parseTemplateString(key, envVariables),
+            parseTemplateString(value, envVariables),
+          ] as [string, string]
+      ),
+      // Tuple to Record object
+      tupleToRecord,
+      // Stringify
+      qs.stringify
+    )
+  }
+
   if (request.body.contentType === "multipart/form-data") {
-    const formData = new FormData()
+    return pipe(
+      request.body.body,
+      A.filter((x) => x.key !== "" && x.active), // Remove empty keys
 
-    request.body.body
-      .filter((x) => x.key !== "" && x.active) // Remove empty keys
-      .map(
-        (x) =>
-          <FormDataKeyValue>{
-            active: x.active,
-            isFile: x.isFile,
-            key: parseTemplateString(x.key, env.variables),
-            value: x.isFile
-              ? x.value
-              : parseTemplateString(x.value, env.variables),
-          }
-      )
-      .forEach((entry) => {
-        if (!entry.isFile) formData.append(entry.key, entry.value)
-        else entry.value.forEach((blob) => formData.append(entry.key, blob))
-      })
+      // Sort files down
+      arraySort((a, b) => {
+        if (a.isFile) return 1
+        if (b.isFile) return -1
+        return 0
+      }),
 
-    return formData
-  } else return parseBodyEnvVariables(request.body.body, env.variables)
+      // FormData allows only a single blob in an entry,
+      // we split array blobs into separate entries (FormData will then join them together during exec)
+      arrayFlatMap((x) =>
+        x.isFile
+          ? x.value.map((v) => ({
+              key: parseTemplateString(x.key, envVariables),
+              value: v as string | Blob,
+            }))
+          : [
+              {
+                key: parseTemplateString(x.key, envVariables),
+                value: parseTemplateString(x.value, envVariables),
+              },
+            ]
+      ),
+      toFormData
+    )
+  } else return parseBodyEnvVariables(request.body.body, envVariables)
 }
 
 /**
@@ -76,6 +148,18 @@ export function getEffectiveRESTRequest(
       value: parseTemplateString(x.value, envVariables),
     }))
 
+  const effectiveFinalParams = request.params
+    .filter(
+      (x) =>
+        x.key !== "" && // Remove empty keys
+        x.active // Only active
+    )
+    .map((x) => ({
+      active: true,
+      key: parseTemplateString(x.key, envVariables),
+      value: parseTemplateString(x.value, envVariables),
+    }))
+
   // Authentication
   if (request.auth.authActive) {
     // TODO: Support a better b64 implementation than btoa ?
@@ -100,11 +184,29 @@ export function getEffectiveRESTRequest(
           envVariables
         )}`,
       })
+    } else if (request.auth.authType === "api-key") {
+      const { key, value, addTo } = request.auth
+      if (addTo === "Headers") {
+        effectiveFinalHeaders.push({
+          active: true,
+          key: parseTemplateString(key, envVariables),
+          value: parseTemplateString(value, envVariables),
+        })
+      } else if (addTo === "Query params") {
+        effectiveFinalParams.push({
+          active: true,
+          key: parseTemplateString(key, envVariables),
+          value: parseTemplateString(value, envVariables),
+        })
+      }
     }
   }
 
-  const effectiveFinalBody = getFinalBodyFromRequest(request, environment)
-  if (request.body.contentType)
+  const effectiveFinalBody = getFinalBodyFromRequest(request, envVariables)
+  const contentTypeInHeader = effectiveFinalHeaders.find(
+    (x) => x.key.toLowerCase() === "content-type"
+  )
+  if (request.body.contentType && !contentTypeInHeader?.value)
     effectiveFinalHeaders.push({
       active: true,
       key: "content-type",
@@ -115,17 +217,7 @@ export function getEffectiveRESTRequest(
     ...request,
     effectiveFinalURL: parseTemplateString(request.endpoint, envVariables),
     effectiveFinalHeaders,
-    effectiveFinalParams: request.params
-      .filter(
-        (x) =>
-          x.key !== "" && // Remove empty keys
-          x.active // Only active
-      )
-      .map((x) => ({
-        active: true,
-        key: parseTemplateString(x.key, envVariables),
-        value: parseTemplateString(x.value, envVariables),
-      })),
+    effectiveFinalParams,
     effectiveFinalBody,
   }
 }

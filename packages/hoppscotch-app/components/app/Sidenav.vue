@@ -1,6 +1,6 @@
 <template>
-  <aside class="flex h-full justify-between md:flex-col">
-    <nav class="flex flex-nowrap md:flex-col flex-1 md:flex-none">
+  <aside class="flex justify-between h-full md:flex-col">
+    <nav class="flex flex-1 flex-nowrap md:flex-col md:flex-none bg-primary">
       <NuxtLink
         v-for="(navigation, index) in primaryNavigation"
         :key="`navigation-${index}`"
@@ -8,16 +8,13 @@
         class="nav-link"
         tabindex="0"
       >
-        <i v-if="navigation.icon" class="material-icons">
-          {{ navigation.icon }}
-        </i>
         <div v-if="navigation.svg">
           <SmartIcon :name="navigation.svg" class="svg-icons" />
         </div>
         <span v-if="EXPAND_NAVIGATION">{{ navigation.title }}</span>
         <tippy
           v-if="!EXPAND_NAVIGATION"
-          :placement="windowInnerWidth.x.value >= 768 ? 'right' : 'bottom'"
+          :placement="mdAndLarger ? 'right' : 'bottom'"
           theme="tooltip"
           :content="navigation.title"
         />
@@ -27,16 +24,15 @@
 </template>
 
 <script setup lang="ts">
-import { useContext } from "@nuxtjs/composition-api"
-import useWindowSize from "~/helpers/utils/useWindowSize"
+import { breakpointsTailwind, useBreakpoints } from "@vueuse/core"
 import { useSetting } from "~/newstore/settings"
+import { useI18n } from "~/helpers/utils/composables"
 
-const {
-  app: { i18n },
-} = useContext()
-const t = i18n.t.bind(i18n)
+const t = useI18n()
 
-const windowInnerWidth = useWindowSize()
+const breakpoints = useBreakpoints(breakpointsTailwind)
+const mdAndLarger = breakpoints.greater("md")
+
 const EXPAND_NAVIGATION = useSetting("EXPAND_NAVIGATION")
 
 const primaryNavigation = [
@@ -106,9 +102,7 @@ const primaryNavigation = [
 
   span {
     @apply mt-2;
-    @apply font-font-medium;
-
-    font-size: calc(var(--body-font-size) - 0.062rem);
+    @apply text-tiny;
   }
 
   &.exact-active-link {

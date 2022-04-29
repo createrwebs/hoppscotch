@@ -1,159 +1,146 @@
 <template>
-  <AppSection label="parameters">
+  <div class="flex flex-col flex-1">
     <div
-      class="
-        bg-primary
-        border-b border-dividerLight
-        flex flex-1
-        top-upperSecondaryStickyFold
-        pl-4
-        z-10
-        sticky
-        items-center
-        justify-between
-      "
+      class="sticky z-10 flex items-center justify-between pl-4 border-b bg-primary border-dividerLight top-upperMobileSecondaryStickyFold sm:top-upperSecondaryStickyFold"
     >
       <label class="font-semibold text-secondaryLight">
-        {{ $t("request.parameter_list") }}
+        {{ t("request.parameter_list") }}
       </label>
       <div class="flex">
         <ButtonSecondary
           v-tippy="{ theme: 'tooltip' }"
           to="https://docs.hoppscotch.io/features/parameters"
           blank
-          :title="$t('app.wiki')"
+          :title="t('app.wiki')"
           svg="help-circle"
         />
         <ButtonSecondary
           v-tippy="{ theme: 'tooltip' }"
-          :title="$t('action.clear_all')"
+          :title="t('action.clear_all')"
           svg="trash-2"
-          @click.native="bulkMode ? clearBulkEditor() : clearContent()"
+          @click.native="clearContent()"
         />
         <ButtonSecondary
           v-tippy="{ theme: 'tooltip' }"
-          :title="$t('state.bulk_mode')"
+          :title="t('state.bulk_mode')"
           svg="edit"
           :class="{ '!text-accent': bulkMode }"
           @click.native="bulkMode = !bulkMode"
         />
         <ButtonSecondary
           v-tippy="{ theme: 'tooltip' }"
-          :title="$t('add.new')"
+          :title="t('add.new')"
           svg="plus"
           :disabled="bulkMode"
           @click.native="addParam"
         />
       </div>
     </div>
-    <div v-if="bulkMode" ref="bulkEditor"></div>
+    <div v-if="bulkMode" ref="bulkEditor" class="flex flex-col flex-1"></div>
     <div v-else>
-      <div
-        v-for="(param, index) in params$"
-        :key="`param-${index}`"
-        class="divide-x divide-dividerLight border-b border-dividerLight flex"
+      <draggable
+        v-model="workingParams"
+        animation="250"
+        handle=".draggable-handle"
+        draggable=".draggable-content"
+        ghost-class="cursor-move"
+        chosen-class="bg-primaryLight"
+        drag-class="cursor-grabbing"
       >
-        <SmartEnvInput
-          v-model="param.key"
-          :placeholder="`${$t('count.parameter', { count: index + 1 })}`"
-          styles="
-            bg-transparent
-            flex
-            flex-1
-            py-1
-            px-4
-          "
-          @change="
-            updateParam(index, {
-              key: $event,
-              value: param.value,
-              active: param.active,
-            })
-          "
-        />
-        <SmartEnvInput
-          v-model="param.value"
-          :placeholder="`${$t('count.value', { count: index + 1 })}`"
-          styles="
-            bg-transparent
-            flex
-            flex-1
-            py-1
-            px-4
-          "
-          @change="
-            updateParam(index, {
-              key: param.key,
-              value: $event,
-              active: param.active,
-            })
-          "
-        />
-        <span>
-          <ButtonSecondary
-            v-tippy="{ theme: 'tooltip' }"
-            :title="
-              param.hasOwnProperty('active')
-                ? param.active
-                  ? $t('action.turn_off')
-                  : $t('action.turn_on')
-                : $t('action.turn_off')
-            "
-            :svg="
-              param.hasOwnProperty('active')
-                ? param.active
-                  ? 'check-circle'
-                  : 'circle'
-                : 'check-circle'
-            "
-            color="green"
-            @click.native="
+        <div
+          v-for="(param, index) in workingParams"
+          :key="`param-${param.id}-${index}`"
+          class="flex border-b divide-x divide-dividerLight border-dividerLight draggable-content group"
+        >
+          <span>
+            <ButtonSecondary
+              svg="grip-vertical"
+              class="cursor-auto text-primary hover:text-primary"
+              :class="{
+                'draggable-handle group-hover:text-secondaryLight !cursor-grab':
+                  index !== workingParams?.length - 1,
+              }"
+              tabindex="-1"
+            />
+          </span>
+          <SmartEnvInput
+            v-model="param.key"
+            :placeholder="`${t('count.parameter', { count: index + 1 })}`"
+            @change="
               updateParam(index, {
-                key: param.key,
+                id: param.id,
+                key: $event,
                 value: param.value,
-                active: param.hasOwnProperty('active') ? !param.active : false,
+                active: param.active,
               })
             "
           />
-        </span>
-        <span>
-          <ButtonSecondary
-            v-tippy="{ theme: 'tooltip' }"
-            :title="$t('action.remove')"
-            svg="trash"
-            color="red"
-            @click.native="deleteParam(index)"
+          <SmartEnvInput
+            v-model="param.value"
+            :placeholder="`${t('count.value', { count: index + 1 })}`"
+            @change="
+              updateParam(index, {
+                id: param.id,
+                key: param.key,
+                value: $event,
+                active: param.active,
+              })
+            "
           />
-        </span>
-      </div>
+          <span>
+            <ButtonSecondary
+              v-tippy="{ theme: 'tooltip' }"
+              :title="
+                param.hasOwnProperty('active')
+                  ? param.active
+                    ? t('action.turn_off')
+                    : t('action.turn_on')
+                  : t('action.turn_off')
+              "
+              :svg="
+                param.hasOwnProperty('active')
+                  ? param.active
+                    ? 'check-circle'
+                    : 'circle'
+                  : 'check-circle'
+              "
+              color="green"
+              @click.native="
+                updateParam(index, {
+                  id: param.id,
+                  key: param.key,
+                  value: param.value,
+                  active: param.hasOwnProperty('active')
+                    ? !param.active
+                    : false,
+                })
+              "
+            />
+          </span>
+          <span>
+            <ButtonSecondary
+              v-tippy="{ theme: 'tooltip' }"
+              :title="t('action.remove')"
+              svg="trash"
+              color="red"
+              @click.native="deleteParam(index)"
+            />
+          </span>
+        </div>
+      </draggable>
       <div
-        v-if="params$.length === 0"
-        class="
-          flex flex-col
-          text-secondaryLight
-          p-4
-          items-center
-          justify-center
-        "
+        v-if="workingParams.length === 0"
+        class="flex flex-col items-center justify-center p-4 text-secondaryLight"
       >
         <img
           :src="`/images/states/${$colorMode.value}/add_files.svg`"
           loading="lazy"
-          class="
-            flex-col
-            my-4
-            object-contain object-center
-            h-16
-            w-16
-            inline-flex
-          "
-          :alt="$t('empty.parameters')"
+          class="inline-flex flex-col object-contain object-center w-16 h-16 my-4"
+          :alt="`${t('empty.parameters')}`"
         />
-        <span class="text-center pb-4">
-          {{ $t("empty.parameters") }}
-        </span>
+        <span class="pb-4 text-center">{{ t("empty.parameters") }}</span>
         <ButtonSecondary
-          :label="`${$t('add.new')}`"
+          :label="`${t('add.new')}`"
           svg="plus"
           filled
           class="mb-4"
@@ -161,133 +148,216 @@
         />
       </div>
     </div>
-  </AppSection>
+  </div>
 </template>
 
 <script setup lang="ts">
-import { ref, useContext, watch, onBeforeUpdate } from "@nuxtjs/composition-api"
-import { useCodemirror } from "~/helpers/editor/codemirror"
-import { HoppRESTParam } from "~/helpers/types/HoppRESTRequest"
-import { useReadonlyStream } from "~/helpers/utils/composables"
+import { Ref, ref, watch } from "@nuxtjs/composition-api"
+import { flow, pipe } from "fp-ts/function"
+import * as O from "fp-ts/Option"
+import * as A from "fp-ts/Array"
+import * as RA from "fp-ts/ReadonlyArray"
+import * as E from "fp-ts/Either"
 import {
-  restParams$,
-  addRESTParam,
-  updateRESTParam,
-  deleteRESTParam,
-  deleteAllRESTParams,
-  setRESTParams,
-} from "~/newstore/RESTSession"
+  HoppRESTParam,
+  parseRawKeyValueEntriesE,
+  rawKeyValueEntriesToString,
+  RawKeyValueEntry,
+} from "@hoppscotch/data"
+import isEqual from "lodash/isEqual"
+import cloneDeep from "lodash/cloneDeep"
+import draggable from "vuedraggable"
+import linter from "~/helpers/editor/linting/rawKeyValue"
+import { useCodemirror } from "~/helpers/editor/codemirror"
+import { useI18n, useToast, useStream } from "~/helpers/utils/composables"
+import { restParams$, setRESTParams } from "~/newstore/RESTSession"
+import { throwError } from "~/helpers/functional/error"
+import { objRemoveKey } from "~/helpers/functional/object"
 
-const {
-  $toast,
-  app: { i18n },
-} = useContext()
-const t = i18n.t.bind(i18n)
+const t = useI18n()
+const toast = useToast()
+
+const idTicker = ref(0)
 
 const bulkMode = ref(false)
 const bulkParams = ref("")
-
-watch(bulkParams, () => {
-  try {
-    const transformation = bulkParams.value.split("\n").map((item) => ({
-      key: item.substring(0, item.indexOf(":")).trim().replace(/^\/\//, ""),
-      value: item.substring(item.indexOf(":") + 1).trim(),
-      active: !item.trim().startsWith("//"),
-    }))
-    setRESTParams(transformation)
-  } catch (e) {
-    $toast.error(`${t("error.something_went_wrong")}`, {
-      icon: "error_outline",
-    })
-    console.error(e)
-  }
-})
-
 const bulkEditor = ref<any | null>(null)
+
+const deletionToast = ref<{ goAway: (delay: number) => void } | null>(null)
 
 useCodemirror(bulkEditor, bulkParams, {
   extendedEditorConfig: {
     mode: "text/x-yaml",
     placeholder: `${t("state.bulk_mode_placeholder")}`,
   },
-  linter: null,
+  linter,
   completer: null,
+  environmentHighlights: true,
 })
 
-const params$ = useReadonlyStream(restParams$, [])
+// The functional parameters list (the parameters actually applied to the session)
+const params = useStream(restParams$, [], setRESTParams) as Ref<HoppRESTParam[]>
 
-watch(
-  params$,
-  (newValue) => {
-    if (
-      (newValue[newValue.length - 1]?.key !== "" ||
-        newValue[newValue.length - 1]?.value !== "") &&
-      newValue.length
-    )
-      addParam()
+// The UI representation of the parameters list (has the empty end param)
+const workingParams = ref<Array<HoppRESTParam & { id: number }>>([
+  {
+    id: idTicker.value++,
+    key: "",
+    value: "",
+    active: true,
   },
-  { deep: true }
+])
+
+// Rule: Working Params always have last element is always an empty param
+watch(workingParams, (paramsList) => {
+  if (paramsList.length > 0 && paramsList[paramsList.length - 1].key !== "") {
+    workingParams.value.push({
+      id: idTicker.value++,
+      key: "",
+      value: "",
+      active: true,
+    })
+  }
+})
+
+// Sync logic between params and working/bulk params
+watch(
+  params,
+  (newParamsList) => {
+    // Sync should overwrite working params
+    const filteredWorkingParams: HoppRESTParam[] = pipe(
+      workingParams.value,
+      A.filterMap(
+        flow(
+          O.fromPredicate((e) => e.key !== ""),
+          O.map(objRemoveKey("id"))
+        )
+      )
+    )
+
+    const filteredBulkParams = pipe(
+      parseRawKeyValueEntriesE(bulkParams.value),
+      E.map(
+        flow(
+          RA.filter((e) => e.key !== ""),
+          RA.toArray
+        )
+      ),
+      E.getOrElse(() => [] as RawKeyValueEntry[])
+    )
+
+    if (!isEqual(newParamsList, filteredWorkingParams)) {
+      workingParams.value = pipe(
+        newParamsList,
+        A.map((x) => ({ id: idTicker.value++, ...x }))
+      )
+    }
+
+    if (!isEqual(newParamsList, filteredBulkParams)) {
+      bulkParams.value = rawKeyValueEntriesToString(newParamsList)
+    }
+  },
+  { immediate: true }
 )
 
-onBeforeUpdate(() => editBulkParamsLine(-1, null))
+watch(workingParams, (newWorkingParams) => {
+  const fixedParams = pipe(
+    newWorkingParams,
+    A.filterMap(
+      flow(
+        O.fromPredicate((e) => e.key !== ""),
+        O.map(objRemoveKey("id"))
+      )
+    )
+  )
 
-const editBulkParamsLine = (index: number, item?: HoppRESTParam | null) => {
-  const params = params$.value
+  if (!isEqual(params.value, fixedParams)) {
+    params.value = cloneDeep(fixedParams)
+  }
+})
 
-  bulkParams.value = params
-    .reduce((all, param, pIndex) => {
-      const current =
-        index === pIndex && item != null
-          ? `${item.active ? "" : "//"}${item.key}: ${item.value}`
-          : `${param.active ? "" : "//"}${param.key}: ${param.value}`
-      return [...all, current]
-    }, [])
-    .join("\n")
-}
+watch(bulkParams, (newBulkParams) => {
+  const filteredBulkParams = pipe(
+    parseRawKeyValueEntriesE(newBulkParams),
+    E.map(
+      flow(
+        RA.filter((e) => e.key !== ""),
+        RA.toArray
+      )
+    ),
+    E.getOrElse(() => [] as RawKeyValueEntry[])
+  )
 
-const clearBulkEditor = () => {
-  bulkParams.value = ""
-}
+  if (!isEqual(params.value, filteredBulkParams)) {
+    params.value = filteredBulkParams
+  }
+})
 
 const addParam = () => {
-  const empty = { key: "", value: "", active: true }
-  const index = params$.value.length
-
-  addRESTParam(empty)
-  editBulkParamsLine(index, empty)
+  workingParams.value.push({
+    id: idTicker.value++,
+    key: "",
+    value: "",
+    active: true,
+  })
 }
 
-const updateParam = (index: number, item: HoppRESTParam) => {
-  updateRESTParam(index, item)
-  editBulkParamsLine(index, item)
+const updateParam = (index: number, param: HoppRESTParam & { id: number }) => {
+  workingParams.value = workingParams.value.map((h, i) =>
+    i === index ? param : h
+  )
 }
 
 const deleteParam = (index: number) => {
-  const parametersBeforeDeletion = params$.value
+  const paramsBeforeDeletion = cloneDeep(workingParams.value)
 
-  deleteRESTParam(index)
-  editBulkParamsLine(index, null)
+  if (
+    !(
+      paramsBeforeDeletion.length > 0 &&
+      index === paramsBeforeDeletion.length - 1
+    )
+  ) {
+    if (deletionToast.value) {
+      deletionToast.value.goAway(0)
+      deletionToast.value = null
+    }
 
-  const deletedItem = parametersBeforeDeletion[index]
-  if (deletedItem.key || deletedItem.value) {
-    $toast.success(t("state.deleted").toString(), {
-      icon: "delete",
+    deletionToast.value = toast.success(`${t("state.deleted")}`, {
       action: [
         {
-          text: t("action.undo").toString(),
+          text: `${t("action.undo")}`,
           onClick: (_, toastObject) => {
-            setRESTParams(parametersBeforeDeletion as HoppRESTParam[])
-            editBulkParamsLine(index, deletedItem)
+            workingParams.value = paramsBeforeDeletion
             toastObject.goAway(0)
+            deletionToast.value = null
           },
         },
       ],
+
+      onComplete: () => {
+        deletionToast.value = null
+      },
     })
   }
+
+  workingParams.value = pipe(
+    workingParams.value,
+    A.deleteAt(index),
+    O.getOrElseW(() => throwError("Working Params Deletion Out of Bounds"))
+  )
 }
 
 const clearContent = () => {
-  deleteAllRESTParams()
-  clearBulkEditor()
+  // set params list to the initial state
+  workingParams.value = [
+    {
+      id: idTicker.value++,
+      key: "",
+      value: "",
+      active: true,
+    },
+  ]
+
+  bulkParams.value = ""
 }
 </script>

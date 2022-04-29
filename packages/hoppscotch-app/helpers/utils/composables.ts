@@ -1,10 +1,11 @@
 import {
   customRef,
-  DeepReadonly,
   onBeforeUnmount,
   readonly,
   Ref,
   ref,
+  shallowRef,
+  useContext,
   watch,
   wrapProperty,
 } from "@nuxtjs/composition-api"
@@ -15,7 +16,7 @@ export const useNuxt = wrapProperty("$nuxt")
 export function useReadonlyStream<T>(
   stream$: Observable<T>,
   initialValue: T
-): Ref<DeepReadonly<T>> {
+): Ref<T> {
   let sub: Subscription | null = null
 
   onBeforeUnmount(() => {
@@ -30,7 +31,7 @@ export function useReadonlyStream<T>(
     targetRef.value = value
   })
 
-  return readonly(targetRef)
+  return readonly(targetRef) as Ref<T>
 }
 
 export function useStream<T>(
@@ -99,11 +100,20 @@ export function pluckMultipleFromRef<T, K extends Array<keyof T>>(
   return Object.fromEntries(keys.map((x) => [x, pluckRef(sourceRef, x)])) as any
 }
 
+export type StreamSubscriberFunc = <T>(
+  stream: Observable<T>,
+  next?: ((value: T) => void) | undefined,
+  error?: ((e: any) => void) | undefined,
+  complete?: (() => void) | undefined
+) => void
+
 /**
  * A composable that provides the ability to run streams
  * and subscribe to them and respect the component lifecycle.
  */
-export function useStreamSubscriber() {
+export function useStreamSubscriber(): {
+  subscribeToStream: StreamSubscriberFunc
+} {
   const subs: Subscription[] = []
 
   const runAndSubscribe = <T>(
@@ -131,4 +141,57 @@ export function useStreamSubscriber() {
   return {
     subscribeToStream: runAndSubscribe,
   }
+}
+
+export function useI18n() {
+  const {
+    app: { i18n },
+  } = useContext()
+  return i18n.t.bind(i18n)
+}
+
+export function useToast() {
+  const { $toast } = useContext()
+  return $toast
+}
+
+export function useColorMode() {
+  const { $colorMode } = useContext()
+
+  return $colorMode
+}
+
+export function useAxios() {
+  const { $axios } = useContext()
+  return $axios
+}
+
+export function usePolled<T>(
+  pollDurationMS: number,
+  pollFunc: (stopPolling: () => void) => T
+): Ref<T> {
+  let polling = true
+  let handle: ReturnType<typeof setInterval> | undefined
+
+  const stopPolling = () => {
+    if (handle) {
+      clearInterval(handle)
+      handle = undefined
+      polling = false
+    }
+  }
+
+  const result = shallowRef(pollFunc(stopPolling))
+
+  if (polling) {
+    handle = setInterval(() => {
+      result.value = pollFunc(stopPolling)
+    }, pollDurationMS)
+  }
+
+  onBeforeUnmount(() => {
+    if (polling) stopPolling()
+  })
+
+  return result
 }

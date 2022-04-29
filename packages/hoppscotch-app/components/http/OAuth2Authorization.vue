@@ -1,54 +1,30 @@
 <template>
   <div class="flex flex-col">
-    <div class="border-b border-dividerLight flex">
-      <input
-        id="oidcDiscoveryURL"
+    <div class="flex flex-1 border-b border-dividerLight">
+      <SmartEnvInput
         v-model="oidcDiscoveryURL"
-        class="bg-transparent flex flex-1 py-2 px-4"
         placeholder="OpenID Connect Discovery URL"
-        name="oidcDiscoveryURL"
       />
     </div>
-    <div class="border-b border-dividerLight flex">
-      <input
-        id="authURL"
-        v-model="authURL"
-        class="bg-transparent flex flex-1 py-2 px-4"
-        placeholder="Authentication URL"
-        name="authURL"
-      />
+    <div class="flex flex-1 border-b border-dividerLight">
+      <SmartEnvInput v-model="authURL" placeholder="Authorization URL" />
     </div>
-    <div class="border-b border-dividerLight flex">
-      <input
-        id="accessTokenURL"
-        v-model="accessTokenURL"
-        class="bg-transparent flex flex-1 py-2 px-4"
-        placeholder="Access Token URL"
-        name="accessTokenURL"
-      />
+    <div class="flex flex-1 border-b border-dividerLight">
+      <SmartEnvInput v-model="accessTokenURL" placeholder="Access Token URL" />
     </div>
-    <div class="border-b border-dividerLight flex">
-      <input
-        id="clientID"
-        v-model="clientID"
-        class="bg-transparent flex flex-1 py-2 px-4"
-        placeholder="Client ID"
-        name="clientID"
-      />
+    <div class="flex flex-1 border-b border-dividerLight">
+      <SmartEnvInput v-model="clientID" placeholder="Client ID" />
     </div>
-    <div class="border-b border-dividerLight flex">
-      <input
-        id="scope"
-        v-model="scope"
-        class="bg-transparent flex flex-1 py-2 px-4"
-        placeholder="Scope"
-        name="scope"
-      />
+    <div class="flex flex-1 border-b border-dividerLight">
+      <SmartEnvInput v-model="clientSecret" placeholder="Client Secret" />
+    </div>
+    <div class="flex flex-1 border-b border-dividerLight">
+      <SmartEnvInput v-model="scope" placeholder="Scope" />
     </div>
     <div class="p-2">
       <ButtonSecondary
         filled
-        :label="`${$t('authorization.generate_token')}`"
+        :label="`${t('authorization.generate_token')}`"
         @click.native="handleAccessTokenRequest()"
       />
     </div>
@@ -56,19 +32,22 @@
 </template>
 
 <script lang="ts">
-import { Ref, useContext } from "@nuxtjs/composition-api"
-import { pluckRef, useStream } from "~/helpers/utils/composables"
-import { HoppRESTAuthOAuth2 } from "~/helpers/types/HoppRESTAuth"
+import { Ref, defineComponent } from "@nuxtjs/composition-api"
+import { HoppRESTAuthOAuth2, parseTemplateString } from "@hoppscotch/data"
+import {
+  pluckRef,
+  useI18n,
+  useStream,
+  useToast,
+} from "~/helpers/utils/composables"
 import { restAuth$, setRESTAuth } from "~/newstore/RESTSession"
 import { tokenRequest } from "~/helpers/oauth"
+import { getCombinedEnvVariables } from "~/helpers/preRequest"
 
-export default {
+export default defineComponent({
   setup() {
-    const {
-      $toast,
-      app: { i18n },
-    } = useContext()
-    const $t = i18n.t.bind(i18n)
+    const t = useI18n()
+    const toast = useToast()
 
     const auth = useStream(
       restAuth$,
@@ -90,6 +69,11 @@ export default {
 
     const clientID = pluckRef(auth as Ref<HoppRESTAuthOAuth2>, "clientID")
 
+    const clientSecret = pluckRef(
+      auth as Ref<HoppRESTAuthOAuth2>,
+      "clientSecret"
+    )
+
     const scope = pluckRef(auth as Ref<HoppRESTAuthOAuth2>, "scope")
 
     const handleAccessTokenRequest = async () => {
@@ -97,25 +81,28 @@ export default {
         oidcDiscoveryURL.value === "" &&
         (authURL.value === "" || accessTokenURL.value === "")
       ) {
-        $toast.error(`${$t("complete_config_urls")}`, {
-          icon: "error",
-        })
+        toast.error(`${t("error.incomplete_config_urls")}`)
         return
       }
+      const envs = getCombinedEnvVariables()
+      const envVars = [...envs.selected, ...envs.global]
+
       try {
         const tokenReqParams = {
           grantType: "code",
-          oidcDiscoveryUrl: oidcDiscoveryURL.value,
-          authUrl: authURL.value,
-          accessTokenUrl: accessTokenURL.value,
-          clientId: clientID.value,
-          scope: scope.value,
+          oidcDiscoveryUrl: parseTemplateString(
+            oidcDiscoveryURL.value,
+            envVars
+          ),
+          authUrl: parseTemplateString(authURL.value, envVars),
+          accessTokenUrl: parseTemplateString(accessTokenURL.value, envVars),
+          clientId: parseTemplateString(clientID.value, envVars),
+          clientSecret: parseTemplateString(clientSecret.value, envVars),
+          scope: parseTemplateString(scope.value, envVars),
         }
         await tokenRequest(tokenReqParams)
       } catch (e) {
-        $toast.error(`${e}`, {
-          icon: "code",
-        })
+        toast.error(`${e}`)
       }
     }
 
@@ -124,9 +111,11 @@ export default {
       authURL,
       accessTokenURL,
       clientID,
+      clientSecret,
       scope,
       handleAccessTokenRequest,
+      t,
     }
   },
-}
+})
 </script>

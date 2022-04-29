@@ -15,16 +15,26 @@
           />
         </span>
       </template>
-      <NuxtLink
-        v-for="(locale, index) in $i18n.locales.filter(
-          ({ code }) => code !== $i18n.locale
-        )"
-        :key="`locale-${String(index)}`"
-        :to="switchLocalePath(locale.code)"
-        @click="$refs.language.tippy().hide()"
-      >
-        <SmartItem :label="locale.name" />
-      </NuxtLink>
+      <div class="flex flex-col" role="menu">
+        <NuxtLink
+          v-for="(locale, index) in $i18n.locales"
+          :key="`locale-${index}`"
+          :to="switchLocalePath(locale.code)"
+          @click="language.tippy().hide()"
+        >
+          <SmartItem
+            :label="locale.name"
+            :active-info-icon="$i18n.locale === locale.code"
+            :info-icon="$i18n.locale === locale.code ? 'done' : null"
+          />
+        </NuxtLink>
+      </div>
     </tippy>
   </span>
 </template>
+
+<script setup lang="ts">
+import { ref } from "@nuxtjs/composition-api"
+
+const language = ref<any | null>(null)
+</script>
