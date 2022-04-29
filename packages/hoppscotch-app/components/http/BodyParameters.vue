@@ -72,6 +72,7 @@
               :key="`param-${index}-file-${fileIndex}`"
               >{{ file.name }}</SmartFileChip
             >
+
           </div>
         </div>
         <span v-else class="flex flex-1">
