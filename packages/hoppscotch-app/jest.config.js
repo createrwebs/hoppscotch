@@ -9,7 +9,7 @@ module.exports = {
   transform: {
     "^.+\\.ts$": "ts-jest",
     "^.+\\.js$": "babel-jest",
-    ".*\\.(vue)$": "vue-jest",
+    ".*\\.(vue)$": require.resolve("./jest-script-setup-transform.js"),
   },
   globals: {
     "vue-jest": {
